@@ -1,0 +1,20 @@
+###################################
+#
+# R.rc by Martin Scharm
+#   copy to $HOME/.R.rc
+#
+# for more informations visit:
+#          http://binfalse.de
+#
+###################################
+
+
+options(width=236, digits=7, show.error.messages="TRUE", warn=1)
+
+.First <- function() cat("\n   Hey nice Guy! Have Fun!\n\n")
+.Last <- function()  cat("\n   Goodbye!\n\n")
+
+bigScreen <- function() options(width=236)
+smallScreen <- function() options(width=180)
+
+bye <- function() quit("yes")
