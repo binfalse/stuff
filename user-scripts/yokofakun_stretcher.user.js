@@ -6,7 +6,7 @@
 // ==/UserScript==
 
 var stretchPixels = 200;
-var removeFriendFeed = true;
+var removeFriendFeed = false;
 var toChange = new Array ("header-wrapper", "outer-wrapper", "main-wrapper");
 
 
