@@ -1,0 +1,8 @@
+setContentType ("image/png")
+temp <- tempfile ()
+y = rnorm (100)
+png (temp, type="cairo")
+plot (1:100, y, t='l')
+dev.off ()
+sendBin (readBin (temp, 'raw', n=file.info(temp)$size))
+unlink (temp)
