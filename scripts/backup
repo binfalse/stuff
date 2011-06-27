@@ -17,13 +17,27 @@ then
 fi
 
 DATE=`date +"%F_%H-%M-%S"`
-BACKUP=$1_$DATE
+BACKUP=${1%/}_$DATE
+
+function do_not_overwrite
+{
+    if [ -e $1 ]
+    then
+        out="$1 exists, please try again later..."
+        for i in $(seq ${#out}); do echo -n 'v'; done; echo
+        echo "$out"
+        for i in $(seq ${#out}); do echo -n '^'; done; echo
+        exit 1
+    fi
+}
 
 if [ ! -d $1 ]
 then
+    do_not_overwrite $BACKUP
     cp $1 $BACKUP
 else
     BACKUP=$BACKUP.tgz
+    do_not_overwrite $BACKUP
     tar czf $BACKUP $1
 fi
 
