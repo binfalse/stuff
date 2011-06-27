@@ -9,12 +9,26 @@
 ###################################
 
 
-options(width=236, digits=7, show.error.messages="TRUE", warn=1)
+options (width=236, digits=7, show.error.messages="TRUE", warn=1)
 
-.First <- function() cat("\n   Hey nice Guy! Have Fun!\n\n")
-.Last <- function()  cat("\n   Goodbye!\n\n")
+# executed at startup and quit
+.First <- function () cat ("\n   Hey nice Guy! Have Fun!\n\n")
+.Last <- function ()  cat ("\n   Goodbye!\n\n")
 
-bigScreen <- function() options(width=236)
-smallScreen <- function() options(width=180)
+# adjust line length depending on screen width
+bigScreen <- function () options (width=236)
+smallScreen <- function () options (width=180)
 
-bye <- function() quit("yes")
+# shorten quit ("yes")
+bye <- function () quit ("yes")
+
+
+##################################
+# some frequently used functions #
+##################################
+
+# calc faculty with f() and faculty()
+f = faculty = function (x) gamma (x + 1)
+
+
+
