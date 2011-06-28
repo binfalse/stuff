@@ -31,7 +31,9 @@ bye <- function () quit ("yes")
 f = faculty = function (x) gamma (x + 1)
 
 # find nth biggest element of a vector
-biggest = function (data, x=1) which (data == sort (data)[n-x+1])
+biggest = function (data, x=1) which (data == sort (data)[length(data)-x+1])
 
+# find nth smallest element of a vector
+smallest = function (data, x=1) which (data == sort (data)[x])
 
 
