@@ -119,7 +119,7 @@ public class Link extends javax.swing.JLabel implements java.awt.event.MouseList
 			}
 			else if (osName.startsWith ("Mac OS"))
 			{
-				Class fileMgr = Class.forName ("com.apple.eio.FileManager");
+				Class<?> fileMgr = Class.forName ("com.apple.eio.FileManager");
 				java.lang.reflect.Method openURL = fileMgr.getDeclaredMethod ("openURL", new Class[] {String.class});
 				openURL.invoke (null, new Object[] {url});
 			} 
