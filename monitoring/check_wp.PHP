@@ -62,7 +62,7 @@ for ($i = 1; $i < count ($argv); $i++)
 if (!$website && !$instdir)
 	$err[] = "no installation directory and no website, don't know what to check...";
 
-if (!($check_core && $check_plugins && $check_themes))
+if (!$check_core && !$check_plugins && !$check_themes)
 	$err[] = "--no-core and --no-plugins and --no-theme? you must be kidding...";
 
 if ($instdir && !file_exists ($instdir.'/wp-load.php'))
