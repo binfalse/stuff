@@ -5,6 +5,8 @@
 #     written by Martin Scharm
 #      see https://binfalse.de
 #
+#     tested with v8.60
+#
 ###################################
 
 use warnings;
@@ -46,8 +48,8 @@ my $dummy = undef;
 my $err = "";
 my $dbg = "";
 
-$err = "$hpasmcli not executeable\n" if (!-x $hpasmcli);
-$err = "$hpacucli not executeable\n" if (!-x $hpacucli);
+$err .= "$hpasmcli not executeable\n" if (!-x $hpasmcli);
+$err .= "$hpacucli not executeable\n" if (!-x $hpacucli);
 
 if ($err || $help || ($no_check_dimms && $no_check_fans && $no_check_powersupply && $no_check_server && $no_check_temp && $no_check_ctrl))
 {
