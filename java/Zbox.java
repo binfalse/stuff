@@ -4,7 +4,7 @@ package de.binfalse.martin;
 /**********************************
  *
  *    written by Martin Scharm
- *     see https://binfalse.de
+ *      see http://binfalse.de
  *
  **********************************/
 

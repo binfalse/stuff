@@ -1,4 +1,12 @@
 #!/usr/bin/perl -w
+###############################
+#
+#   Query canteen schedule
+#
+#   written by Martin Scharm
+#     see http://binfalse.de
+#
+###############################
 
 use warnings;
 use strict;

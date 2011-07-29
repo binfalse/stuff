@@ -12,6 +12,8 @@
 #include <errno.h>
 #include <fstream>
 
+// written by Martin Scharm
+//   see http://binfalse.de
 
 using namespace std;
 

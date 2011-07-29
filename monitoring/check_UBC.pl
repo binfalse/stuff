@@ -1,9 +1,12 @@
 #!/usr/bin/perl -w
-
 ###################################
 #
+#     Monitor the UserBeanCounter
+#     of OpenVZ vservers. This is
+#     the way vservers tell it's
+#     host about ressource issues.
 #     written by Martin Scharm
-#      see https://binfalse.de
+#       see http://binfalse.de
 #
 ###################################
 

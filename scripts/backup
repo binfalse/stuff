@@ -1,8 +1,13 @@
 #!/bin/bash
-
-# for more informations visit:
+###############################
 #
-#          https://binfalse.de
+#   Create easily backups of
+#   files and directories
+#
+#   written by Martin Scharm
+#     see http://binfalse.de
+#
+###############################
 
 if [ $# -ne 1 ]
 then

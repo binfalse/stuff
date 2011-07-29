@@ -1,10 +1,10 @@
 #!/usr/bin/php
 <?php
-
 ###################################
 #
+#     WordPress Updates Monitoring
 #     written by Martin Scharm
-#      see https://binfalse.de
+#       see http://binfalse.de
 #
 ###################################
 

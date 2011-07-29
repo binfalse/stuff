@@ -1,3 +1,4 @@
+/* JS binary clock by Martin Scharm <http://binfalse.de> */
 function init()
 {
 	clock();

@@ -1,10 +1,13 @@
 #!/bin/bash
-
-# send mails about scheduled dates
+###############################
 #
-# for more informations visit:
+#   Reminder for birthdays and
+#   other important dates
 #
-#          http://binfalse.de
+#   written by Martin Scharm
+#     see http://binfalse.de
+#
+###############################
 
 # looking forward how many days?
 NUM_DAYS=7

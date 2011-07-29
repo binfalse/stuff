@@ -1,4 +1,12 @@
 #!/usr/bin/perl -w
+###############################
+#
+#   DNS-server benchmarking
+#
+#   written by Martin Scharm
+#     see http://binfalse.de
+#
+###############################
 use warnings;
 use strict;
 

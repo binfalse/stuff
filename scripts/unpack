@@ -1,8 +1,12 @@
 #!/bin/bash
-
-# for more informations visit:
+###############################
 #
-#          https://binfalse.de
+#   easily un-archive archives
+#
+#   written by Martin Scharm
+#     see http://binfalse.de
+#
+###############################
 
 if [ $# -ne 1 ]
 then

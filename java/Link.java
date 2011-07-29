@@ -9,7 +9,7 @@ import java.awt.Cursor;
 * 
 * this class creates a Link extending JLabel
 * 
-* @author Martin Scharm
+* @author Martin Scharm, see http://binfalse.de
 *
 */
 public class Link extends javax.swing.JLabel implements java.awt.event.MouseListener

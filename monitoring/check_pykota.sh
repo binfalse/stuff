@@ -1,9 +1,11 @@
 #!/bin/bash
-
 ###################################
 #
+#     check if pykota is available.
+#     especially helpful if somebody
+#     updated python...
 #     written by Martin Scharm
-#      see https://binfalse.de
+#       see http://binfalse.de
 #
 ###################################
 

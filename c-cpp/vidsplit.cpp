@@ -2,6 +2,12 @@
 #include <highgui.h>
 #include <iostream>
 
+/* written by martin scharm
+ *   see http://binfalse.de
+ *
+ * split a video streams to png images
+ */
+
 using namespace std;
 
 

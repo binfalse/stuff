@@ -1,11 +1,11 @@
 #!/usr/bin/perl -w 
-
-###################################
+#################################################
 #
+#     Monitoring FLASH drive of a CISCO catalyst
 #     written by Martin Scharm
-#      see https://binfalse.de
+#      see http://binfalse.de
 #
-###################################
+#################################################
 
 use strict;
 use Net::SNMP;

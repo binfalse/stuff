@@ -1,5 +1,12 @@
 #!/usr/bin/perl -w
-# see http://binfalse.de
+###############################
+#
+#   Creating a dual proxy w Perl
+#
+#   written by Martin Scharm
+#     see http://binfalse.de
+#
+###############################
 
 use warnings;
 use strict;

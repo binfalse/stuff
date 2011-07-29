@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 /* written by martin scharm
- * see  https://binfalse.de
+ *   see http://binfalse.de
  *
  * you have to take a various number of o's
  * from *one* of the stacks. if you did so,

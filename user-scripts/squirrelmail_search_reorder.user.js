@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name           SquirrelMail search reorder
-// @namespace      binfalse
+// @namespace      binfalse.de
 // @description    resort everything ;)
 // @include        https://YourSquirrelMailServer*/search.php*
 // ==/UserScript==

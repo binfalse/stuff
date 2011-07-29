@@ -1,9 +1,9 @@
 #!/usr/bin/perl -w
-
 ###################################
 #
+#  Check the state of mount points
 #     written by Martin Scharm
-#      see https://binfalse.de
+#       see http://binfalse.de
 #
 ###################################
 

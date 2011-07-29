@@ -1,9 +1,9 @@
 #!/usr/bin/perl -w
 ###################################
 #
-#     HP ProLiant Monitoring
+#     HP ProLiant health Monitoring
 #     written by Martin Scharm
-#      see https://binfalse.de
+#       see http://binfalse.de
 #
 #     tested with v8.60
 #

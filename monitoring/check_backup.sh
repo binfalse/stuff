@@ -1,4 +1,13 @@
 #!/bin/bash
+###################################
+#
+#     Check if there are pending Backups
+#     written by Martin Scharm
+#       see http://binfalse.de
+#
+#     tested with v8.60
+#
+###################################
 
 source /usr/lib/nagios/plugins/utils.sh
 

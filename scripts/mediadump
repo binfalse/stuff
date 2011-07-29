@@ -1,8 +1,13 @@
 #!/bin/bash
-
-# for more informations visit:
+###############################
 #
-#          https://binfalse.de
+#   Instant download of Media
+#   from different libraries
+#
+#   written by Martin Scharm
+#     see http://binfalse.de
+#
+###############################
 
 if [ $# -lt 1 ]
 then

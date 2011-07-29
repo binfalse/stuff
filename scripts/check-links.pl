@@ -1,8 +1,13 @@
 #!/usr/bin/perl -w
-
-# for more informations visit:
+###############################
 #
-#     http://binfalse.de
+#   Check and analyze links
+#      on a website
+#
+#   written by Martin Scharm
+#     see http://binfalse.de
+#
+###############################
 
 use strict;
 use LWP::UserAgent;

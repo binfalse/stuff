@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name           GalaxyDatasetImprover
-// @namespace      binfalse
+// @namespace      binfalse.de
 // @description    tabularize datasets
 // @include        http://main.g2.bx.psu.edu/datasets/*/display/?preview=True
 // ==/UserScript==

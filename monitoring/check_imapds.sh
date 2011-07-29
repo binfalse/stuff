@@ -1,9 +1,12 @@
 #!/bin/bash
-
 ###################################
 #
+#     check the number of running
+#     imapd's, we had some trouble
+#     with them, few days ago
+#
 #     written by Martin Scharm
-#      see https://binfalse.de
+#       see http://binfalse.de
 #
 ###################################
 

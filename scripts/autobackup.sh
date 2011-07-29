@@ -1,11 +1,10 @@
 #!/bin/bash
-
 ###############################
 #
 #   automatic backup script
 #
 #   written by Martin Scharm
-#      see http://binfalse.de
+#     see http://binfalse.de
 #
 ###############################
 
