@@ -3,9 +3,7 @@
 #
 #     Monitoring URL Shortener
 #     written by Martin Scharm
-#      see http://binfalse.de
-#
-#     tested with v8.60
+#       see http://binfalse.de
 #
 ###################################
 use warnings;
