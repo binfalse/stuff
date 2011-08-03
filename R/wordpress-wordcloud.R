@@ -29,7 +29,7 @@ words=table(strsplit(tolower(text), "\\s+"))
 words=words[nchar(names(words), "c")==nchar(names(words), "b")]
 # remove words shorter then 4 chars
 words=words[nchar(names(words), "c")>3]
-# remove words accuring less than 5 times
+# remove words occuring less than 5 times
 words=words[words>4]
 
 # create the image
