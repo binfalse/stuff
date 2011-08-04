@@ -3,7 +3,7 @@ require(wordcloud)
 require(RColorBrewer)
 
 # special chars we want to delete
-sent=c(",", "\\.", ";", "=", ":", "\\?", "!", "-", "\\(", "\\)", "\\*", "&", "%", "$", "\\+", "\"", "'", "<", ">", "\\[", "\\]", "\\{", "\\}", "\\/", "\\\\")
+sent=c(",", "\\.", ";", "=", ":", "\\?", "!", "-", "\\(", "\\)", "\\*", "&", "%", "$", "\\+", "'", "<", ">", "\\[", "\\]", "\\{", "\\}", "\\/")
 # wordpress bb-codes, also delete!
 bbcd=c("\\[cc.+?/cci?\\]", "\\[latex.+?/latex\\]", "\\[caption.+?/caption\\]")
 # and of course delet HTML tags
