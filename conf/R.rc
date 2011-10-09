@@ -11,6 +11,15 @@
 
 options (width=236, digits=7, show.error.messages="TRUE", warn=1)
 
+# freq used libs
+library(ggplot2)
+library(plyr)
+
+# aliases
+s <- base::summary;
+h <- utils::head;
+n <- base::names;
+
 # executed at startup and quit
 .First <- function () cat ("\n   Hey nice Guy! Have Fun!\n\n")
 .Last <- function ()  cat ("\n   Goodbye!\n\n")
