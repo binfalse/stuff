@@ -1,0 +1,100 @@
+#!/usr/bin/perl -w
+#################################################
+#
+#     Monitor POWER SUPPLY of an extreme networks device
+#     written by Martin Scharm
+#       see http://binfalse.de
+#
+#################################################
+
+use strict;
+use Net::SNMP;
+use Getopt::Long;
+
+use lib "/usr/lib/nagios/plugins/";
+use utils qw($TIMEOUT %ERRORS);
+
+my $POWER_OPERATIONAL = '1.3.6.1.4.1.1916.1.1.1.10.0';
+my $POWER_REDUNDANT_STATUS = '1.3.6.1.4.1.1916.1.1.1.11.0';
+my $POWER_REDUNDANT_ALARM = '1.3.6.1.4.1.1916.1.1.1.12.0';
+
+my $returnvalue = $ERRORS{"OK"};
+my $returnstring = "";
+my $returnsupp = "";
+
+my $switch = undef;
+my $community = undef;
+my $help = undef;
+
+Getopt::Long::Configure ("bundling");
+GetOptions(
+	'h' => \$help,
+	'help' => \$help,
+	's:s' => \$switch,
+	'switch:s' => \$switch,
+	'C:s' => \$community,
+	'community:s' => \$community,
+	'T:s' => \$TIMEOUT,
+	'timeout:s' => \$TIMEOUT
+);
+
+sub print_usage
+{
+    print "Usage: $0 -s <SWITCH> -C <COMMUNITY-STRING> [-T <TIMEOUT>]\n\n";
+    print "       <SWITCH>            the switch's hostname or ip address\n";
+    print "       <COMMUNITY-STRING>  the community string as configured on the switch\n";
+    print "       <TIMEOUT>           max time to wait for an answer, defaults to ".$TIMEOUT."\n"
+}
+
+
+# CHECKS
+if ( defined($help) )
+{
+	print_usage();
+	exit $ERRORS{"UNKNOWN"};
+}
+if ( !defined($switch) )
+{
+	print "Need Switch-Address!\n";
+	print_usage();
+	exit $ERRORS{"UNKNOWN"};
+}
+if ( !defined($community) )
+{
+	print "Need Community-String!\n";
+	print_usage();
+	exit $ERRORS{"UNKNOWN"};
+}
+
+
+my ($session, $error) = Net::SNMP->session( -hostname  => $switch, -version   => 2, -community => $community, -timeout   => $TIMEOUT);
+
+if (!defined($session)) {
+   printf("ERROR opening session: %s.\n", $error);
+   exit $ERRORS{"CRITICAL"};
+}
+
+
+# retrieving values
+
+my $result = $session->get_request(-varbindlist => [$POWER_OPERATIONAL, $POWER_REDUNDANT_STATUS, $POWER_REDUNDANT_ALARM] );
+if (!defined($result))
+{
+   printf("ERROR: couldn't retrieve power supply values : %s.\n", $session->error);
+   $session->close;
+   exit $ERRORS{"CRITICAL"};
+}
+my $power_op = $result->{$POWER_OPERATIONAL};
+my $power_redundant_state = $result->{$POWER_REDUNDANT_STATUS};
+my $power_redundant_alarm = $result->{$POWER_REDUNDANT_ALARM};
+
+
+
+# generating the output
+$returnvalue = $ERRORS{"WARN"} if ($power_redundant_state == 3 || $power_redundant_alarm != 2);
+$returnvalue = $ERRORS{"CRITICAL"} if ($power_op != 1);
+
+print "power supply is " . ($returnvalue == $ERRORS{"OK"} ? "ok" : "ERR");
+print "|power is ".($power_op != 1 ? "NOT " : "")."operational; redundant power supply is " . ($power_redundant_state != 2 ? ($power_redundant_state != 1 ? "ERR" : "not existant") : "OK")."; redundant power is ".($power_redundant_alarm != 2 ? "ALARMING" : "OK");
+
+exit $returnvalue;
