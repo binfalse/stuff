@@ -96,7 +96,7 @@ my $power_alarm = $result->{$POWER_ALARM};
 
 
 # generating the output
-$returnvalue = $ERRORS{"WARN"} if ($power_redundant_state == 3 || $power_redundant_alarm != 2);
+$returnvalue = $ERRORS{"WARNING"} if ($power_redundant_state == 3 || $power_redundant_alarm != 2);
 $returnvalue = $ERRORS{"CRITICAL"} if ($power_op != 1 || $power_alarm != 2 || $power_status != 2);
 
 print "power supply is " . ($returnvalue == $ERRORS{"OK"} ? "ok" : "ERR");
