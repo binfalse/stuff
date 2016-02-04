@@ -100,6 +100,13 @@ $returnvalue = $ERRORS{"WARNING"} if ($power_redundant_state == 3 || $power_redu
 $returnvalue = $ERRORS{"CRITICAL"} if ($power_op != 1 || $power_alarm != 2 || $power_status != 2);
 
 print "power supply is " . ($returnvalue == $ERRORS{"OK"} ? "ok" : "ERR");
-print "|power is ".($power_op != 1 ? "NOT " : "")."operational".($power_alarm != 2 ? " and ALARMING!!" : "")." - status: ".($power_status == 1 ? "NOT PRESENT" : $power_status == 2 ? "present and ok" : "PRESENT AND NOT OK")."; voltage input is ".($power_voltage == 1 ? "v110" : ($power_voltage == 2 ? "v220" : ($power_voltage == 3 ? "v48DC" : "unknown")))."; redundant power supply is " . ($power_redundant_state != 2 ? ($power_redundant_state != 1 ? "ERR" : "not existant") : "OK")."; redundant power is ".($power_redundant_alarm != 2 ? "ALARMING" : "OK");
+
+printf "|power is%s operational%s - status: %s; voltage input is %s; redundant power supply is %s; redundant power is %s",
+	($power_op != 1 ? " NOT" : ""), # NOT operational
+	($power_alarm != 2 ? " and ALARMING!!" : ""), #power alarming
+	($power_status == 1 ? "NOT PRESENT" : ($power_status == 2 ? "present and ok" : "PRESENT AND NOT OK")), #primary power present?
+	($power_voltage == 1 ? "v110" : ($power_voltage == 2 ? "v220" : ($power_voltage == 3 ? "v48DC" : "unknown"))), # what voltage? supplemental only
+	($power_redundant_state != 2 ? ($power_redundant_state != 1 ? "ERR" : "not existant") : "OK"), #what about the redundant supply
+	($power_redundant_alarm != 2 ? "ALARMING" : "OK"); # is redundant alarming?
 
 exit $returnvalue;
