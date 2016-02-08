@@ -36,7 +36,16 @@ my $help = undef;
 my $print = 0;
 my $warn = 0;
 my $expected_file = undef;
-my %expected_entries = ();
+
+# the hash containing expected entries
+my %EXPECTED_ENTRIES = ();
+# keys are the macs
+# every object in this hash has following fields
+my $EXPECTED_PORT = 0;
+my $EXPECTED_VLAN = 1;
+
+
+
 
 Getopt::Long::Configure ("bundling");
 GetOptions(
@@ -123,15 +132,15 @@ if ($expected_file)
 	while (my $line = <EXPECTED>)
 	{
 		chomp $line;
-		my @fields = split "," , $line;
 		next if $line =~ m/^#/;
+		my @fields = split "," , $line;
 		if (@fields != 3)
 		{
 			print "File $expected_file cannot be read! Unrecognized entry: $line\n";
 			print_usage();
 			exit $ERRORS{"UNKNOWN"};
 		}
-		$expected_entries{compareable_mac($fields[0])} = [$fields[1], $fields[2]];
+		$EXPECTED_ENTRIES{compareable_mac($fields[0])} = [$fields[1], $fields[2]];
 	}
 	close EXPECTED;
 }
@@ -190,7 +199,7 @@ foreach my $k (keys %$fdb_table)
 
 my $discrepancies = 0;
 my $nohit = 0;
-$returnsupp .= "expected " . (keys %expected_entries) . " entries in fdb; ";
+$returnsupp .= "expected " . (keys %EXPECTED_ENTRIES) . " entries in fdb; ";
 
 # print the fdb
 if ($print)
@@ -206,28 +215,28 @@ else
 {
 	foreach my $k (sort keys %fdb)
 	{
-		if ($fdb{$k}{$FDB_TABLE_MAC} && $expected_entries{$fdb{$k}{$FDB_TABLE_MAC}})
+		if ($fdb{$k}{$FDB_TABLE_MAC} && $EXPECTED_ENTRIES{$fdb{$k}{$FDB_TABLE_MAC}})
 		{
 			my $mac = $fdb{$k}{$FDB_TABLE_MAC};
 			# port correct?
-			if ($expected_entries{$mac}[0] != $fdb{$k}{$FDB_TABLE_PORT})
+			if ($EXPECTED_ENTRIES{$mac}[$EXPECTED_PORT] != $fdb{$k}{$FDB_TABLE_PORT})
 			{
-				$returnsupp .= "port of ".display_mac ($mac)." doesn't match: " . $expected_entries{$mac}[0] . " != " . $fdb{$k}{$FDB_TABLE_PORT} . "; ";
+				$returnsupp .= "port of ".display_mac ($mac)." doesn't match: " . $EXPECTED_ENTRIES{$mac}[$EXPECTED_PORT] . " != " . $fdb{$k}{$FDB_TABLE_PORT} . "; ";
 				$discrepancies++;
 			}
 			# vlan correct?
-			if ($expected_entries{$mac}[1] ne $vlan{$fdb{$k}{$FDB_TABLE_VLAN}}{$VLAN_DESCR})
+			if ($EXPECTED_ENTRIES{$mac}[$EXPECTED_VLAN] ne $vlan{$fdb{$k}{$FDB_TABLE_VLAN}}{$VLAN_DESCR})
 			{
-				$returnsupp .= "port of ".display_mac ($mac)." doesn't match: " . $expected_entries{$mac}[1] . " != " . $vlan{$fdb{$k}{$FDB_TABLE_VLAN}}{$VLAN_DESCR} . "; ";
+				$returnsupp .= "port of ".display_mac ($mac)." doesn't match: " . $EXPECTED_ENTRIES{$mac}[$EXPECTED_VLAN] . " != " . $vlan{$fdb{$k}{$FDB_TABLE_VLAN}}{$VLAN_DESCR} . "; ";
 				$discrepancies++;
 			}
-			$expected_entries{$mac}[0] = "found";
+			$EXPECTED_ENTRIES{$mac}[$EXPECTED_PORT] = "found";
 		}
 	}
 	
-	foreach my $expected (sort keys %expected_entries)
+	foreach my $expected (sort keys %EXPECTED_ENTRIES)
 	{
-		if ($expected_entries{$expected}[0] ne "found")
+		if ($EXPECTED_ENTRIES{$expected}[$EXPECTED_PORT] ne "found")
 		{
 			$returnsupp .= display_mac ($expected)." not found; ";
 			$nohit++;
