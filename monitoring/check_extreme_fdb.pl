@@ -190,6 +190,7 @@ foreach my $k (keys %$fdb_table)
 
 my $discrepancies = 0;
 my $nohit = 0;
+$returnsupp .= "expected " . (keys %expected_entries) . " entries in fdb; ";
 
 # print the fdb
 if ($print)
@@ -205,7 +206,7 @@ else
 {
 	foreach my $k (sort keys %fdb)
 	{
-		if ($expected_entries{$fdb{$k}{$FDB_TABLE_MAC}})
+		if ($fdb{$k}{$FDB_TABLE_MAC} && $expected_entries{$fdb{$k}{$FDB_TABLE_MAC}})
 		{
 			my $mac = $fdb{$k}{$FDB_TABLE_MAC};
 			# port correct?
