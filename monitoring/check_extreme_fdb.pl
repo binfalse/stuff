@@ -219,13 +219,13 @@ else
 		{
 			my $mac = $fdb{$k}{$FDB_TABLE_MAC};
 			# port correct?
-			if ($EXPECTED_ENTRIES{$mac}[$EXPECTED_PORT] != $fdb{$k}{$FDB_TABLE_PORT})
+			if ($EXPECTED_ENTRIES{$mac}[$EXPECTED_PORT] ne '*' && $EXPECTED_ENTRIES{$mac}[$EXPECTED_PORT] != $fdb{$k}{$FDB_TABLE_PORT})
 			{
 				$returnsupp .= "port of ".display_mac ($mac)." doesn't match: " . $EXPECTED_ENTRIES{$mac}[$EXPECTED_PORT] . " != " . $fdb{$k}{$FDB_TABLE_PORT} . "; ";
 				$discrepancies++;
 			}
 			# vlan correct?
-			if ($EXPECTED_ENTRIES{$mac}[$EXPECTED_VLAN] ne $vlan{$fdb{$k}{$FDB_TABLE_VLAN}}{$VLAN_DESCR})
+			if ($EXPECTED_ENTRIES{$mac}[$EXPECTED_VLAN] ne '*' && $EXPECTED_ENTRIES{$mac}[$EXPECTED_VLAN] ne $vlan{$fdb{$k}{$FDB_TABLE_VLAN}}{$VLAN_DESCR})
 			{
 				$returnsupp .= "port of ".display_mac ($mac)." doesn't match: " . $EXPECTED_ENTRIES{$mac}[$EXPECTED_VLAN] . " != " . $vlan{$fdb{$k}{$FDB_TABLE_VLAN}}{$VLAN_DESCR} . "; ";
 				$discrepancies++;
