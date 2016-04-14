@@ -10,7 +10,6 @@
 use strict;
 use Net::SNMP;
 use Getopt::Long;
-    use Data::Dumper;
 use lib "/usr/lib/nagios/plugins/";
 use utils qw($TIMEOUT %ERRORS);
 
