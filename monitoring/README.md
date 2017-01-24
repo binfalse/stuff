@@ -1,3 +1,4 @@
 # monitoring stuff.
 
-Those are a few scripts for Nagios/Icinga to monitor various hard- and software. There is [a better documentation of all the scripts available at my website.](http://binfalse.de/software/nagios/)
+The monitoring scripts moved to an [extra repository at my monitoring repository](https://github.com/binfalse/monitoring).
+The stuff over here is just for backwards compatibility..
