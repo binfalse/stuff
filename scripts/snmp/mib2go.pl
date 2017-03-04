@@ -5,6 +5,14 @@ use Data::Dumper;
 use Switch;
 
 $SNMP::save_descriptions = 1;
+
+# you may provide the root of a subtree to be printed as an argument
+my $root = undef;
+$root = $ARGV[0] if $ARGV[0];
+
+
+# load some modules
+
 # SNMP::loadModules('EXTREME-SYSTEM-MIB');
 
 SNMP::loadModules('EXTREME-BASE-MIB');
@@ -43,6 +51,7 @@ SNMP::loadModules('EXTREME-VLAN-MIB');
 SNMP::loadModules('EXTREME-WIRELESS-MIB');
 
 
+
 my %extremeOids;
 my %extremeOidsTypeProbs;
 
@@ -51,8 +60,9 @@ foreach my $k (keys %SNMP::MIB){
 	next unless index ($SNMP::MIB{$k}{objectID}, "1916") > 0;
 	
 	# uncomment if you want special filter... hard coded of course ;-)
-	next if index ($SNMP::MIB{$k}{objectID}, "1.3.6.1.4.1.1916.1.2.1") < 0;
+	# next if index ($SNMP::MIB{$k}{objectID}, "1.3.6.1.4.1.1916.1.2.1") < 0;
 	
+	next if $root && index ($SNMP::MIB{$k}{objectID}, $root) < 0;
 	
 	$extremeOids{$SNMP::MIB{$k}{objectID}} = $SNMP::MIB{$k};
 }
