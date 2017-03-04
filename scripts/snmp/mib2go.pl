@@ -67,10 +67,14 @@ foreach my $k (keys %SNMP::MIB){
 	$extremeOids{$SNMP::MIB{$k}{objectID}} = $SNMP::MIB{$k};
 }
 
+my $tableOid = undef;
+my $tableOidLabel = undef;
+
 
 foreach my $k (sort (map {version->declare($_)} keys %extremeOids)){
 	
 	next if !$extremeOids{$k}{status} || lc $extremeOids{$k}{status} eq "deprecated";
+	
 # 	print Dumper(SNMP::getType ($extremeOids{$k}{objectID}));
 # 	print Dumper($extremeOids{$k}{moduleID});
 # 	print Dumper($extremeOids{$k}{type});
@@ -79,6 +83,17 @@ foreach my $k (sort (map {version->declare($_)} keys %extremeOids)){
 # 	print Dumper($extremeOids{$k}{syntax});
 # 	print Dumper($extremeOids{$k}{textualConvention});
 # 	print Dumper($extremeOids{$k}{units});
+	
+	if ($tableOid && index ($extremeOids{$k}{objectID}, $tableOid) < 0) {
+		print "}\n";
+		$tableOid = undef;
+	}
+	
+	if ($tableOid && $tableOid.".1" eq $extremeOids{$k}{objectID}) {
+		print $tableOidLabel, " []", ucfirst ($extremeOids{$k}{label}), "\n\n\n";
+	}
+	
+	
 	
 	print "// ", ucfirst ($extremeOids{$k}{label}), " ", $extremeOids{$k}{objectID}, "\n";
 	
@@ -122,7 +137,20 @@ foreach my $k (sort (map {version->declare($_)} keys %extremeOids)){
 		}
 	}
 	
-	print "\n\n";
+	
+	
+	if ($tableOid && $tableOid.".1" eq $extremeOids{$k}{objectID}) {
+		print "type ", ucfirst ($extremeOids{$k}{label}), " {\n";
+	}
+	
+	
+	if ($extremeOids{$k}{label} =~ /.*Table$/) {
+		$tableOid = $extremeOids{$k}{objectID};
+		$tableOidLabel = ucfirst ($extremeOids{$k}{label});
+	}
+	else {
+		print "\n\n";
+	}
 }
 
 
