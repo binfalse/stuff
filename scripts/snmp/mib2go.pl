@@ -71,9 +71,16 @@ foreach my $k (keys %SNMP::MIB){
 foreach my $k (sort (map {version->declare($_)} keys %extremeOids)){
 	
 	next if !$extremeOids{$k}{status} || lc $extremeOids{$k}{status} eq "deprecated";
+# 	print Dumper(SNMP::getType ($extremeOids{$k}{objectID}));
+# 	print Dumper($extremeOids{$k}{moduleID});
+# 	print Dumper($extremeOids{$k}{type});
+# 	print Dumper($extremeOids{$k}{access});
+# 	print Dumper($extremeOids{$k}{status});
+# 	print Dumper($extremeOids{$k}{syntax});
+# 	print Dumper($extremeOids{$k}{textualConvention});
+# 	print Dumper($extremeOids{$k}{units});
 	
-	
-	print "// ", $extremeOids{$k}{label}, " ", $extremeOids{$k}{objectID}, "\n";
+	print "// ", ucfirst ($extremeOids{$k}{label}), " ", $extremeOids{$k}{objectID}, "\n";
 	
 	if ($extremeOids{$k}{description}) {
 		foreach my $line (split '\n', $extremeOids{$k}{description}) {
