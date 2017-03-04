@@ -140,7 +140,7 @@ foreach my $k (sort (map {version->declare($_)} keys %extremeOids)){
 	
 	
 	if ($tableOid && $tableOid.".1" eq $extremeOids{$k}{objectID}) {
-		print "type ", ucfirst ($extremeOids{$k}{label}), " {\n";
+		print "type ", ucfirst ($extremeOids{$k}{label}), " struct {\n";
 	}
 	
 	
@@ -152,6 +152,10 @@ foreach my $k (sort (map {version->declare($_)} keys %extremeOids)){
 		print "\n\n";
 	}
 }
+
+
+print "}\n" if $tableOid;
+
 
 
 # usual not necessary
