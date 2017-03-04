@@ -3,12 +3,24 @@ use warnings;
 use SNMP;
 use Data::Dumper;
 use Switch;
+use constant { true => 1, false => 0 };
 
 $SNMP::save_descriptions = 1;
 
+my $filebase = undef;
+if ($ARGV[0])
+{
+	$filebase = $ARGV[0];
+}
+
+
+if (!$filebase || !-e $filebase or !-d $filebase) {
+	die ("don't know were to store the files");
+}
+
 # you may provide the root of a subtree to be printed as an argument
 my $root = undef;
-$root = $ARGV[0] if $ARGV[0];
+$root = $ARGV[1] if $ARGV[1];
 
 
 # load some modules
@@ -54,6 +66,7 @@ SNMP::loadModules('EXTREME-WIRELESS-MIB');
 
 my %extremeOids;
 my %extremeOidsTypeProbs;
+my $extremeFiles;
 
 
 foreach my $k (keys %SNMP::MIB){
@@ -70,13 +83,70 @@ foreach my $k (keys %SNMP::MIB){
 my $tableOid = undef;
 my $tableOidLabel = undef;
 
+my $currentFile = undef;
 
-foreach my $k (sort (map {version->declare($_)} keys %extremeOids)){
+
+
+sub getModuleName {
+	my $module = shift;
+	my $moduleName = "";
+	foreach my $part (split /[^a-zA-Z]/, $module)
+	{
+		$moduleName .= ucfirst lc $part;
+	}
+	return $moduleName;
+}
+
+
+sub getFile {
+	my $module = shift;
+	my $table = shift;
+	my $hash = shift;
 	
+	if ($table)
+	{
+		if (!$extremeFiles->{$module . "-table"})
+		{
+			my $filename = $filebase."/".$module."-tables.go";
+			open (my $f, '>', $filename) || die ("cannot open file " . $filename);
+			$extremeFiles->{$module . "-table"} = $f;
+		}
+		return $extremeFiles->{$module . "-table"};
+	}
+	else
+	{
+		if (!$extremeFiles->{$module})
+		{
+			my $filename = $filebase."/".$module.".go";
+			open (my $f, '>', $filename) || die ("cannot open file " . $filename);
+			$extremeFiles->{$module} = $f;
+			
+			my $moduleName = getModuleName ($module);
+			print $f "// MIB MODULE ", $module, "\n";
+			print $f "type ", $moduleName, " struct {\n\n\n";
+		}
+		return $extremeFiles->{$module};
+	}
+}
+
+
+foreach my $k (sort (map {version->declare($_)} keys %extremeOids))
+{
 	next if !$extremeOids{$k}{status} || lc $extremeOids{$k}{status} eq "deprecated";
 	
+	
+	if ($tableOid)
+	{
+		$currentFile = getFile ($extremeOids{$k}{moduleID}, true, $extremeFiles);
+	}
+	else
+	{
+		$currentFile = getFile ($extremeOids{$k}{moduleID}, false, $extremeFiles);
+	}
+	
+	
 # 	print Dumper(SNMP::getType ($extremeOids{$k}{objectID}));
-# 	print Dumper($extremeOids{$k}{moduleID});
+# 	print Dumper();
 # 	print Dumper($extremeOids{$k}{type});
 # 	print Dumper($extremeOids{$k}{access});
 # 	print Dumper($extremeOids{$k}{status});
@@ -85,36 +155,42 @@ foreach my $k (sort (map {version->declare($_)} keys %extremeOids)){
 # 	print Dumper($extremeOids{$k}{units});
 	
 	if ($tableOid && index ($extremeOids{$k}{objectID}, $tableOid) < 0) {
-		print "}\n";
+		print $currentFile "}\n";
 		$tableOid = undef;
+		
+		# we want to go back to the base file...
+		$currentFile = getFile ($extremeOids{$k}{moduleID}, false, $extremeFiles);
+		#$extremeFiles->{$extremeOids{$k}{moduleID}};
 	}
 	
 	if ($tableOid && $tableOid.".1" eq $extremeOids{$k}{objectID}) {
-		print $tableOidLabel, " []", ucfirst ($extremeOids{$k}{label}), "\n\n\n";
+		print $currentFile $tableOidLabel, " []", ucfirst ($extremeOids{$k}{label}), "\n\n\n";
+		
+		
 	}
 	
 	
 	
-	print "// ", ucfirst ($extremeOids{$k}{label}), " ", $extremeOids{$k}{objectID}, "\n";
+	print $currentFile "// ", ucfirst ($extremeOids{$k}{label}), " ", $extremeOids{$k}{objectID}, "\n";
 	
 	if ($extremeOids{$k}{description}) {
 		foreach my $line (split '\n', $extremeOids{$k}{description}) {
 			$line =~ s/^\s+|\s+$//g;
-			print "// ", $line, "\n";
+			print $currentFile "// ", $line, "\n";
 		}
 	}
 	
 # 	print "// ", $extremeOids{$k}{status}, "\n";
-	print "// ", $extremeOids{$k}{syntax}, "\n";
+print $currentFile "// ", $extremeOids{$k}{syntax}, "\n";
 	foreach my $range (@{$extremeOids{$k}{ranges}}) {
-		print "// range from ", $range->{low}, " (low) to ", $range->{high}, " (high)\n";
+		print $currentFile "// range from ", $range->{low}, " (low) to ", $range->{high}, " (high)\n";
 	}
 	
 	my @enums;
 	foreach my $enum (keys %{$extremeOids{$k}{enums}}) {
 		push @enums, "//    " . $extremeOids{$k}{enums}{$enum} . " (" . $enum . ")\n";
 	}
-	print sort @enums;
+	print $currentFile sort @enums;
 	
 	if ($extremeOids{$k}{syntax})
 	{
@@ -122,13 +198,13 @@ foreach my $k (sort (map {version->declare($_)} keys %extremeOids)){
 		
 		switch ($extremeOids{$k}{syntax}) {
 			case /INTEGER|UNSIGNED32|ExtremeVlanType|ExtremeVlanEncapsType|RowStatus|COUNTER(64)?|ClientAuthType|TICKS|BITS|Timeout|ExtremeWirelessCountryCode|ExtremeWirelessAntennaType|TestAndIncr|ExtremeWirelessPhysInterfaceIndex|Dot11Speed|Dot11AChannel|ExtremeWirelessChannelAutoSelectStatus|NetworkAuthMode|Dot11AuthMode|ExtremeWirelessVirtInterfaceIndex|WPACipherSet|InterfaceIndex|Dot11Type|WirelessRemoteConnectBindingType|AuthServerType|TimeStamp|GAUGE|AuthServerAccessType|WPAKeyMgmtSet|ExtremeWirelessAntennaLocation/ {
-				print ucfirst ($extremeOids{$k}{label}), " *big.Int\n";
+				print $currentFile ucfirst ($extremeOids{$k}{label}), " *big.Int\n";
 			}
 			case "TruthValue" {
-				print ucfirst ($extremeOids{$k}{label}), " bool\n";
+				print $currentFile ucfirst ($extremeOids{$k}{label}), " bool\n";
 			}
 			case /DisplayString|IPADDR|PortList|MacAddress|OBJECTID|OCTETSTR|L4Port|ExtremeDeviceId|ExtremeGenAddr|BridgeId|InetAddress|OwnerString/ {
-				print ucfirst ($extremeOids{$k}{label}), " string\n";
+				print $currentFile ucfirst ($extremeOids{$k}{label}), " string\n";
 			}
 			else {
 				die ("do not understand " . $extremeOids{$k}{syntax});
@@ -140,7 +216,7 @@ foreach my $k (sort (map {version->declare($_)} keys %extremeOids)){
 	
 	
 	if ($tableOid && $tableOid.".1" eq $extremeOids{$k}{objectID}) {
-		print "type ", ucfirst ($extremeOids{$k}{label}), " struct {\n";
+		print $currentFile "type ", ucfirst ($extremeOids{$k}{label}), " struct {\n";
 	}
 	
 	
@@ -149,16 +225,33 @@ foreach my $k (sort (map {version->declare($_)} keys %extremeOids)){
 		$tableOidLabel = ucfirst ($extremeOids{$k}{label});
 	}
 	else {
-		print "\n\n";
+		print $currentFile "\n\n";
 	}
 }
 
 
-print "}\n" if $tableOid;
+# finish last file if it was a table
+print $currentFile "}\n" if $tableOid;
 
 
 
-# usual not necessary
+
+# close all files
+foreach my $k (keys %$extremeFiles){
+	my $file = $extremeFiles->{$k};
+	print $file "}\n" if ($k !~ /-table.go$/);
+	close ($file);
+}
+
+
+
+
+
+
+
+
+
+# usually not necessary
 foreach my $k (sort (map {version->declare($_)} keys %extremeOidsTypeProbs)){
 	print "//TYPEPTOBLEM!!! ", $extremeOids{$k}{label}, " ", $extremeOids{$k}{objectID}, "\n";
 	if ($extremeOids{$k}{description}) {
