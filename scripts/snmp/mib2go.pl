@@ -4,23 +4,24 @@ use SNMP;
 use Data::Dumper;
 use Switch;
 use constant { true => 1, false => 0 };
+use Getopt::Long;
 
 $SNMP::save_descriptions = 1;
 
 my $filebase = undef;
-if ($ARGV[0])
-{
-	$filebase = $ARGV[0];
-}
+my $packagename = "mib2go";
+my $filterbase = undef;
+
+GetOptions (
+	"dir=s" => \$filebase,
+	"package=s"   => \$packagename,
+	"filterOid=s"  => \$filterbase)
+or die("Error in command line arguments\n");
 
 
 if (!$filebase || !-e $filebase or !-d $filebase) {
 	die ("don't know were to store the files");
 }
-
-# you may provide the root of a subtree to be printed as an argument
-my $root = undef;
-$root = $ARGV[1] if $ARGV[1];
 
 
 # load some modules
@@ -68,25 +69,31 @@ my %extremeOids;
 my %extremeOidsTypeProbs;
 my $extremeFiles;
 
+my $tableOid = undef;
+my $tableOidLabel = undef;
+my $currentFile = undef;
+my $nonTableFile = undef;
+my $tableModule = undef;
+
+
+
 
 foreach my $k (keys %SNMP::MIB){
+	# filter for EXTREME products
 	next unless index ($SNMP::MIB{$k}{objectID}, "1916") > 0;
 	
-	# uncomment if you want special filter... hard coded of course ;-)
-	# next if index ($SNMP::MIB{$k}{objectID}, "1.3.6.1.4.1.1916.1.2.1") < 0;
+	# OID filter from command line?
+	next if $filterbase && index ($SNMP::MIB{$k}{objectID}, $filterbase) < 0;
 	
-	next if $root && index ($SNMP::MIB{$k}{objectID}, $root) < 0;
-	
+	# everything else goes to the OIDs that should be processed
 	$extremeOids{$SNMP::MIB{$k}{objectID}} = $SNMP::MIB{$k};
 }
 
-my $tableOid = undef;
-my $tableOidLabel = undef;
-
-my $currentFile = undef;
 
 
 
+# get a module name for go structures
+# will convert EXTREME-VLAN-MIB to ExtremeVlanMib
 sub getModuleName {
 	my $module = shift;
 	my $moduleName = "";
@@ -98,6 +105,17 @@ sub getModuleName {
 }
 
 
+sub getFilePreamble {
+	my $pname = shift;
+	return "package " . $pname . "
+
+import (
+	\"math/big\"
+)\n\n\n";
+}
+
+
+# get the file given a module id
 sub getFile {
 	my $module = shift;
 	my $table = shift;
@@ -110,6 +128,11 @@ sub getFile {
 			my $filename = $filebase."/".$module."-tables.go";
 			open (my $f, '>', $filename) || die ("cannot open file " . $filename);
 			$extremeFiles->{$module . "-table"} = $f;
+			
+			print "created ",$filename,"\n";
+			
+			print $f getFilePreamble ($packagename);
+			print $f "// table structures of the MIB MODULE ", $module, "\n\n";
 		}
 		return $extremeFiles->{$module . "-table"};
 	}
@@ -121,27 +144,37 @@ sub getFile {
 			open (my $f, '>', $filename) || die ("cannot open file " . $filename);
 			$extremeFiles->{$module} = $f;
 			
+			print "created ",$filename,"\n";
+			
 			my $moduleName = getModuleName ($module);
+			print $f getFilePreamble ($packagename);
 			print $f "// MIB MODULE ", $module, "\n";
-			print $f "type ", $moduleName, " struct {\n\n\n";
+			print $f "type ", $moduleName, " struct {\n\n";
+			print $f "// when did we read that entry?\n";
+			print $f "LastUpdated *big.Int\n\n\n";
 		}
 		return $extremeFiles->{$module};
 	}
 }
 
 
+# iterate all OIDs that we need to process
 foreach my $k (sort (map {version->declare($_)} keys %extremeOids))
 {
 	next if !$extremeOids{$k}{status} || lc $extremeOids{$k}{status} eq "deprecated";
+	
+	print "processing ", $extremeOids{$k}{moduleID}, " -> ", $extremeOids{$k}{label}, "\n";
 	
 	
 	if ($tableOid)
 	{
 		$currentFile = getFile ($extremeOids{$k}{moduleID}, true, $extremeFiles);
+		$nonTableFile = getFile ($extremeOids{$k}{moduleID}, false, $extremeFiles);
 	}
 	else
 	{
 		$currentFile = getFile ($extremeOids{$k}{moduleID}, false, $extremeFiles);
+		$nonTableFile = $currentFile;
 	}
 	
 	
@@ -155,18 +188,20 @@ foreach my $k (sort (map {version->declare($_)} keys %extremeOids))
 # 	print Dumper($extremeOids{$k}{units});
 	
 	if ($tableOid && index ($extremeOids{$k}{objectID}, $tableOid) < 0) {
-		print $currentFile "}\n";
-		$tableOid = undef;
 		
+		if ($tableModule eq $extremeOids{$k}{moduleID})
+		{
+			print $currentFile "\n\n}\n";
+		}
+		
+		$tableOid = undef;
+		$tableModule = undef;
 		# we want to go back to the base file...
-		$currentFile = getFile ($extremeOids{$k}{moduleID}, false, $extremeFiles);
-		#$extremeFiles->{$extremeOids{$k}{moduleID}};
+		$currentFile = $nonTableFile;
 	}
 	
 	if ($tableOid && $tableOid.".1" eq $extremeOids{$k}{objectID}) {
-		print $currentFile $tableOidLabel, " []", ucfirst ($extremeOids{$k}{label}), "\n\n\n";
-		
-		
+		print $nonTableFile $tableOidLabel, " []", ucfirst ($extremeOids{$k}{label}), "\n\n\n";
 	}
 	
 	
@@ -180,8 +215,8 @@ foreach my $k (sort (map {version->declare($_)} keys %extremeOids))
 		}
 	}
 	
-# 	print "// ", $extremeOids{$k}{status}, "\n";
-print $currentFile "// ", $extremeOids{$k}{syntax}, "\n";
+	print $currentFile "// ", $extremeOids{$k}{syntax}, "\n";
+	
 	foreach my $range (@{$extremeOids{$k}{ranges}}) {
 		print $currentFile "// range from ", $range->{low}, " (low) to ", $range->{high}, " (high)\n";
 	}
@@ -198,17 +233,16 @@ print $currentFile "// ", $extremeOids{$k}{syntax}, "\n";
 		
 		switch ($extremeOids{$k}{syntax}) {
 			case /INTEGER|UNSIGNED32|ExtremeVlanType|ExtremeVlanEncapsType|RowStatus|COUNTER(64)?|ClientAuthType|TICKS|BITS|Timeout|ExtremeWirelessCountryCode|ExtremeWirelessAntennaType|TestAndIncr|ExtremeWirelessPhysInterfaceIndex|Dot11Speed|Dot11AChannel|ExtremeWirelessChannelAutoSelectStatus|NetworkAuthMode|Dot11AuthMode|ExtremeWirelessVirtInterfaceIndex|WPACipherSet|InterfaceIndex|Dot11Type|WirelessRemoteConnectBindingType|AuthServerType|TimeStamp|GAUGE|AuthServerAccessType|WPAKeyMgmtSet|ExtremeWirelessAntennaLocation/ {
-				print $currentFile ucfirst ($extremeOids{$k}{label}), " *big.Int\n";
+				print $currentFile ucfirst ($extremeOids{$k}{label}), " *big.Int\n\n";
 			}
 			case "TruthValue" {
-				print $currentFile ucfirst ($extremeOids{$k}{label}), " bool\n";
+				print $currentFile ucfirst ($extremeOids{$k}{label}), " bool\n\n";
 			}
 			case /DisplayString|IPADDR|PortList|MacAddress|OBJECTID|OCTETSTR|L4Port|ExtremeDeviceId|ExtremeGenAddr|BridgeId|InetAddress|OwnerString/ {
-				print $currentFile ucfirst ($extremeOids{$k}{label}), " string\n";
+				print $currentFile ucfirst ($extremeOids{$k}{label}), " string\n\n";
 			}
 			else {
-				die ("do not understand " . $extremeOids{$k}{syntax});
-				#$extremeOidsTypeProbs{$k} = $extremeOids{$k};
+				die ("do not understand syntax: " . $extremeOids{$k}{syntax} . " (cannot decide if sting or int etc)");
 			}
 		}
 	}
@@ -223,6 +257,7 @@ print $currentFile "// ", $extremeOids{$k}{syntax}, "\n";
 	if ($extremeOids{$k}{label} =~ /.*Table$/) {
 		$tableOid = $extremeOids{$k}{objectID};
 		$tableOidLabel = ucfirst ($extremeOids{$k}{label});
+		$tableModule = $extremeOids{$k}{moduleID};
 	}
 	else {
 		print $currentFile "\n\n";
@@ -231,15 +266,24 @@ print $currentFile "// ", $extremeOids{$k}{syntax}, "\n";
 
 
 # finish last file if it was a table
-print $currentFile "}\n" if $tableOid;
-
+# print $currentFile "}\n" if $tableOid;
 
 
 
 # close all files
 foreach my $k (keys %$extremeFiles){
 	my $file = $extremeFiles->{$k};
-	print $file "}\n" if ($k !~ /-table.go$/);
+	
+	# if the last entry in a module is 
+	# * a table we won't write a final } to the table files
+	# * _not_ a table we will write a final } to the table defintion
+	# we fix that in the above code, will be cumbersome, or we just
+	# seek back 2 bytes and overwrite the } with another } if it was
+	# set previously ;-)
+	seek($file, -2, 1);
+	
+	
+	print $file "}\n\n";
 	close ($file);
 }
 
@@ -247,32 +291,6 @@ foreach my $k (keys %$extremeFiles){
 
 
 
-
-
-
-
-# usually not necessary
-foreach my $k (sort (map {version->declare($_)} keys %extremeOidsTypeProbs)){
-	print "//TYPEPTOBLEM!!! ", $extremeOids{$k}{label}, " ", $extremeOids{$k}{objectID}, "\n";
-	if ($extremeOids{$k}{description}) {
-		foreach my $line (split '\n', $extremeOids{$k}{description}) {
-			print "// ", $line, "\n";
-		}
-	}
-	print "// ", $extremeOids{$k}{status}, "\n";
-	print "// ", $extremeOids{$k}{syntax}, "\n";
-	# 	print Dumper($extremeOids{$k}{ranges});
-	foreach my $range (@{$extremeOids{$k}{ranges}}) {
-		print "// range from ", $range->{low}, " (low) to ", $range->{high}, " (high)\n";
-	}
-	# 	print Dumper($extremeOids{$k}{enums});
-	
-	foreach my $enum (keys %{$extremeOids{$k}{enums}}) {
-		# 		print Dumper($enum);
-		# 		print Dumper($enum);
-		print "//    ",$extremeOids{$k}{enums}{$enum}," (",$enum,")\n";
-	}
-}
 
 
 
