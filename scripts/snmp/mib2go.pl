@@ -75,6 +75,7 @@ my $currentFile = undef;
 my $nonTableFile = undef;
 my $tableModule = undef;
 
+my $mibModules;
 
 
 
@@ -119,7 +120,7 @@ import (
 sub getFile {
 	my $module = shift;
 	my $table = shift;
-	my $hash = shift;
+	my $oid = shift;
 	
 	if ($table)
 	{
@@ -152,10 +153,81 @@ sub getFile {
 			print $f "type ", $moduleName, " struct {\n\n";
 			print $f "// when did we read that entry?\n";
 			print $f "LastUpdated *big.Int\n\n\n";
+			
+			$mibModules->{$module} = {
+				id => $module,
+				name => $moduleName,
+				commonOid => $oid,
+				fields => {},
+				tables => {}
+			};
 		}
 		return $extremeFiles->{$module};
 	}
 }
+sub longestCommonOid {
+	my $first = shift;
+	my $second = shift;
+	
+	# from https://stackoverflow.com/questions/9114402/regexp-finding-longest-common-prefix-of-two-strings/9120604#9120604
+	my $xor = "$first" ^ "$second";    # quotes force string xor even for numbers
+	$xor =~ /^\0*/;                    # match leading null characters
+	my $common_prefix_length = $+[0];  # get length of match
+	
+# 	print "lco of $first and $second is ",substr ($first, 0, $common_prefix_length)," ($common_prefix_length)\n";
+	
+	return substr ($first, 0, $common_prefix_length);
+}
+
+sub addModuleField {
+	my $field = shift;
+	my $type = shift;
+	
+	$mibModules->{$field->{moduleID}}->{fields}->{$field->{objectID}} = {
+		id => $field->{objectID},
+		type => $type,
+		name => $field->{label}
+	};
+	
+	$mibModules->{$field->{moduleID}}->{commonOid} = longestCommonOid ($mibModules->{$field->{moduleID}}->{commonOid}, $field->{objectID});
+	
+}
+
+sub addModuleTable {
+	my $field = shift;
+	my $tableOid = shift;
+	
+	$mibModules->{$field->{moduleID}}->{tables}->{$tableOid} = {
+		id => $field->{objectID},
+		type => undef,
+		fields => {}
+	};
+	
+	$mibModules->{$field->{moduleID}}->{commonOid} = longestCommonOid ($mibModules->{$field->{moduleID}}->{commonOid}, $field->{objectID});
+}
+
+sub declareModuleTableEntryType {
+	my $field = shift;
+	my $tableOid = shift;
+	my $type = shift;
+	
+	$mibModules->{$field->{moduleID}}->{tables}->{$tableOid}->{type} = $type;
+}
+
+sub addModuleTableField {
+	my $field = shift;
+	my $tableOid = shift;
+	my $type = shift;
+	$mibModules->{$field->{moduleID}}->{tables}->{$tableOid}->{fields}->{$field->{objectID}} = {
+		id => $field->{objectID},
+		type => $type,
+		name => $field->{label}
+	};
+}
+	
+	
+	
+	
 
 
 # iterate all OIDs that we need to process
@@ -163,22 +235,24 @@ foreach my $k (sort (map {version->declare($_)} keys %extremeOids))
 {
 	next if !$extremeOids{$k}{status} || lc $extremeOids{$k}{status} eq "deprecated";
 	
-	print "processing ", $extremeOids{$k}{moduleID}, " -> ", $extremeOids{$k}{label}, "\n";
+	my $module = $extremeOids{$k}{moduleID};
+	my $oid = $extremeOids{$k}{objectID};
+	print "processing ", $module, " -> ", $extremeOids{$k}{label}, "\n";
 	
 	
 	if ($tableOid)
 	{
-		$currentFile = getFile ($extremeOids{$k}{moduleID}, true, $extremeFiles);
-		$nonTableFile = getFile ($extremeOids{$k}{moduleID}, false, $extremeFiles);
+		$currentFile = getFile ($module, true, $oid);
+		$nonTableFile = getFile ($module, false, $oid);
 	}
 	else
 	{
-		$currentFile = getFile ($extremeOids{$k}{moduleID}, false, $extremeFiles);
+		$currentFile = getFile ($module, false, $oid);
 		$nonTableFile = $currentFile;
 	}
 	
 	
-# 	print Dumper(SNMP::getType ($extremeOids{$k}{objectID}));
+	# 	print Dumper(SNMP::getType ($oid));
 # 	print Dumper();
 # 	print Dumper($extremeOids{$k}{type});
 # 	print Dumper($extremeOids{$k}{access});
@@ -187,9 +261,9 @@ foreach my $k (sort (map {version->declare($_)} keys %extremeOids))
 # 	print Dumper($extremeOids{$k}{textualConvention});
 # 	print Dumper($extremeOids{$k}{units});
 	
-	if ($tableOid && index ($extremeOids{$k}{objectID}, $tableOid) < 0) {
+	if ($tableOid && index ($oid, $tableOid) < 0) {
 		
-		if ($tableModule eq $extremeOids{$k}{moduleID})
+		if ($tableModule eq $module)
 		{
 			print $currentFile "\n\n}\n";
 		}
@@ -200,13 +274,13 @@ foreach my $k (sort (map {version->declare($_)} keys %extremeOids))
 		$currentFile = $nonTableFile;
 	}
 	
-	if ($tableOid && $tableOid.".1" eq $extremeOids{$k}{objectID}) {
+	if ($tableOid && $tableOid.".1" eq $oid) {
 		print $nonTableFile $tableOidLabel, " []", ucfirst ($extremeOids{$k}{label}), "\n\n\n";
 	}
 	
 	
 	
-	print $currentFile "// ", ucfirst ($extremeOids{$k}{label}), " ", $extremeOids{$k}{objectID}, "\n";
+	print $currentFile "// ", ucfirst ($extremeOids{$k}{label}), " ", $oid, "\n";
 	
 	if ($extremeOids{$k}{description}) {
 		foreach my $line (split '\n', $extremeOids{$k}{description}) {
@@ -215,7 +289,7 @@ foreach my $k (sort (map {version->declare($_)} keys %extremeOids))
 		}
 	}
 	
-	print $currentFile "// ", $extremeOids{$k}{syntax}, "\n";
+	my $syntax = $extremeOids{$k}{syntax};
 	
 	foreach my $range (@{$extremeOids{$k}{ranges}}) {
 		print $currentFile "// range from ", $range->{low}, " (low) to ", $range->{high}, " (high)\n";
@@ -227,41 +301,64 @@ foreach my $k (sort (map {version->declare($_)} keys %extremeOids))
 	}
 	print $currentFile sort @enums;
 	
-	if ($extremeOids{$k}{syntax})
+	my $type = "*big.Int";
+	if ($syntax)
 	{
-		my $syntax = $extremeOids{$k}{syntax};
+		print $currentFile "// ", $extremeOids{$k}{syntax}, "\n";
 		
-		switch ($extremeOids{$k}{syntax}) {
+		switch ($syntax) {
 			case /INTEGER|UNSIGNED32|ExtremeVlanType|ExtremeVlanEncapsType|RowStatus|COUNTER(64)?|ClientAuthType|TICKS|BITS|Timeout|ExtremeWirelessCountryCode|ExtremeWirelessAntennaType|TestAndIncr|ExtremeWirelessPhysInterfaceIndex|Dot11Speed|Dot11AChannel|ExtremeWirelessChannelAutoSelectStatus|NetworkAuthMode|Dot11AuthMode|ExtremeWirelessVirtInterfaceIndex|WPACipherSet|InterfaceIndex|Dot11Type|WirelessRemoteConnectBindingType|AuthServerType|TimeStamp|GAUGE|AuthServerAccessType|WPAKeyMgmtSet|ExtremeWirelessAntennaLocation/ {
-				print $currentFile ucfirst ($extremeOids{$k}{label}), " *big.Int\n\n";
+				$type = " *big.Int";
 			}
 			case "TruthValue" {
-				print $currentFile ucfirst ($extremeOids{$k}{label}), " bool\n\n";
+				$type = "bool";
 			}
 			case /DisplayString|IPADDR|PortList|MacAddress|OBJECTID|OCTETSTR|L4Port|ExtremeDeviceId|ExtremeGenAddr|BridgeId|InetAddress|OwnerString/ {
-				print $currentFile ucfirst ($extremeOids{$k}{label}), " string\n\n";
+				$type = "string";
 			}
 			else {
-				die ("do not understand syntax: " . $extremeOids{$k}{syntax} . " (cannot decide if sting or int etc)");
+				die ("do not understand syntax: " . $syntax . " (cannot decide if sting or int etc)");
 			}
 		}
+		
+		print $currentFile ucfirst ($extremeOids{$k}{label}), " ", $type, "\n\n";
 	}
 	
 	
 	
-	if ($tableOid && $tableOid.".1" eq $extremeOids{$k}{objectID}) {
-		print $currentFile "type ", ucfirst ($extremeOids{$k}{label}), " struct {\n";
+	if ($tableOid && $tableOid.".1" eq $oid) {
+		my $entryStruct = ucfirst ($extremeOids{$k}{label});
+		print $currentFile "type ", $entryStruct, " struct {\n";
+		declareModuleTableEntryType ($extremeOids{$k}, $tableOid, $entryStruct);
 	}
 	
 	
 	if ($extremeOids{$k}{label} =~ /.*Table$/) {
-		$tableOid = $extremeOids{$k}{objectID};
+		$tableOid = $oid;
 		$tableOidLabel = ucfirst ($extremeOids{$k}{label});
-		$tableModule = $extremeOids{$k}{moduleID};
+		$tableModule = $module;
 	}
 	else {
 		print $currentFile "\n\n";
 	}
+	
+	
+	
+	
+	if (!$tableOid) {
+		# this is a module field
+		addModuleField ($extremeOids{$k}, $type);
+	}
+	elsif ($tableOid eq $oid) {
+		# this is a table
+		addModuleTable ($extremeOids{$k}, $tableOid);
+	}
+	else {
+		# this is a table field
+		addModuleTableField ($extremeOids{$k}, $tableOid, $type);
+	}
+	
+	
 }
 
 
@@ -289,9 +386,13 @@ foreach my $k (keys %$extremeFiles){
 
 
 
-
-
-
+foreach my $k (keys %$mibModules){
+	print $mibModules->{$k}->{commonOid},"\n";
+# 	if ($k eq "EXTREME-RTSTATS-MIB") {
+	if ($k eq "EXTREME-SYSTEM-MIB") {
+		print Dumper($mibModules->{$k});
+	}
+}
 
 
 
