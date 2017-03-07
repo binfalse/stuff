@@ -412,11 +412,11 @@ sub writeClassStructure {
 	# preamble for module file
 	if ($module->{needsBigInt})
 	{
-		print $f getFilePreamble ($packagename, ["math/big"]);
+		print $f getFilePreamble ($packagename, ["math/big", "github.com/soniah/gosnmp"]);
 	}
 	else
 	{
-		print $f getFilePreamble ($packagename, []);
+		print $f getFilePreamble ($packagename, ["github.com/soniah/gosnmp"]);
 	}
 	print $f "// MIB MODULE ", $module->{id}, "\n";
 	print $f "// longest common oid is ", $module->{commonOid}, "\n";
@@ -580,7 +580,7 @@ sub writeClassStructure {
 		print $f $indentation . "// get information table " . $module->{tables}->{$k}->{name} . "\n";
 		print $f $indentation . "err := snmp.BulkWalk (\"" . $k . "\", e.ParseSnmpTablesDetails)\n" . 
 			$indentation . "if err != nil {\n" .
-			$indentation . $indentation . "log.Fatalf(\"Getting fields returned err: %v\", err)\n" .
+			$indentation . $indentation . "log.Fatalf(\"Getting table for ".$module->{tables}->{$k}->{name}." returned err: %v\", err)\n" .
 			$indentation . "}\n\n";
 	}
 	
@@ -614,11 +614,11 @@ print $enterpriseFile "type " . $packageTypeName . " struct {\n\n";
 print $enterpriseFile $packageFile{classStructure} . "\n";
 print $enterpriseFile "\n}\n\n\n";
 
-print $enterpriseFile "func (e *" . $packageTypeName . ") RetrieveEnterpriseDetails (snmp *gosnmp.GoSNMP) {";
+print $enterpriseFile "func (e *" . $packageTypeName . ") RetrieveEnterpriseDetails (snmp *gosnmp.GoSNMP) {\n";
 print $enterpriseFile $packageFile{snmpParseFunc} . "\n";
 print $enterpriseFile "\n}\n\n\n";
 
-print $enterpriseFile "func (e *" . $packageTypeName . ") String() string {";
+print $enterpriseFile "func (e *" . $packageTypeName . ") String() string {\n";
 print $enterpriseFile $packageFile{stringFunc} . "\n";
 print $enterpriseFile "\n}\n\n\n";
 
