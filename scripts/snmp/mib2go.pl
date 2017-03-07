@@ -11,6 +11,7 @@ $SNMP::save_descriptions = 1;
 my $filebase = undef;
 my $packagename = "mib2go";
 my $filterbase = undef;
+my $indentation = "\t";
 
 GetOptions (
 	"dir=s" => \$filebase,
@@ -67,20 +68,24 @@ SNMP::loadModules('EXTREME-WIRELESS-MIB');
 
 my %extremeOids;
 my %extremeOidsTypeProbs;
-my $extremeFiles;
 
 my $tableOid = undef;
 my $tableOidLabel = undef;
-my $currentFile = undef;
-my $nonTableFile = undef;
 my $tableModule = undef;
 
 my $mibModules;
+
+my %packageFile = (
+	classStructure => "",
+	snmpParseFunc => "",
+	stringFunc => ""
+);
 
 
 
 foreach my $k (keys %SNMP::MIB){
 	# filter for EXTREME products
+	# needs to be adjusted if we want to use cisco etc
 	next unless index ($SNMP::MIB{$k}{objectID}, "1916") > 0;
 	
 	# OID filter from command line?
@@ -106,65 +111,71 @@ sub getModuleName {
 }
 
 
+# get the file preamble
 sub getFilePreamble {
 	my $pname = shift;
-	return "package " . $pname . "
-
-import (
-	\"math/big\"
-)\n\n\n";
-}
-
-
-# get the file given a module id
-sub getFile {
-	my $module = shift;
-	my $table = shift;
-	my $oid = shift;
+	my $imports = shift;
 	
-	if ($table)
-	{
-		if (!$extremeFiles->{$module . "-table"})
-		{
-			my $filename = $filebase."/".$module."-tables.go";
-			open (my $f, '>', $filename) || die ("cannot open file " . $filename);
-			$extremeFiles->{$module . "-table"} = $f;
-			
-			print "created ",$filename,"\n";
-			
-			print $f getFilePreamble ($packagename);
-			print $f "// table structures of the MIB MODULE ", $module, "\n\n";
-		}
-		return $extremeFiles->{$module . "-table"};
+	my $ret = "package " . $pname;
+	
+	$ret = $ret . "\n\nimport (\n";
+	
+	foreach my $import (@$imports) {
+		$ret = $ret . "	\"".$import."\"\n";
 	}
-	else
-	{
-		if (!$extremeFiles->{$module})
-		{
-			my $filename = $filebase."/".$module.".go";
-			open (my $f, '>', $filename) || die ("cannot open file " . $filename);
-			$extremeFiles->{$module} = $f;
-			
-			print "created ",$filename,"\n";
-			
-			my $moduleName = getModuleName ($module);
-			print $f getFilePreamble ($packagename);
-			print $f "// MIB MODULE ", $module, "\n";
-			print $f "type ", $moduleName, " struct {\n\n";
-			print $f "// when did we read that entry?\n";
-			print $f "LastUpdated *big.Int\n\n\n";
-			
-			$mibModules->{$module} = {
-				id => $module,
-				name => $moduleName,
-				commonOid => $oid,
-				fields => {},
-				tables => {}
-			};
+	$ret = $ret . ")\n";
+	
+	return $ret . "\n\n\n";
+}
+
+
+# parse the MIB's syntax declaration and decide for the corresponding type in go
+sub getType {
+	my $syntax = shift;
+	
+	return undef if (!$syntax);
+	
+	switch ($syntax) {
+		case /INTEGER|UNSIGNED32|ExtremeVlanType|ExtremeVlanEncapsType|RowStatus|COUNTER(64)?|ClientAuthType|TICKS|BITS|Timeout|ExtremeWirelessCountryCode|ExtremeWirelessAntennaType|TestAndIncr|ExtremeWirelessPhysInterfaceIndex|Dot11Speed|Dot11AChannel|ExtremeWirelessChannelAutoSelectStatus|NetworkAuthMode|Dot11AuthMode|ExtremeWirelessVirtInterfaceIndex|WPACipherSet|InterfaceIndex|Dot11Type|WirelessRemoteConnectBindingType|AuthServerType|TimeStamp|GAUGE|AuthServerAccessType|WPAKeyMgmtSet|ExtremeWirelessAntennaLocation/ {
+			return "*big.Int";
 		}
-		return $extremeFiles->{$module};
+		case "TruthValue" {
+			return "bool";
+		}
+		case /DisplayString|IPADDR|PortList|MacAddress|OBJECTID|OCTETSTR|L4Port|ExtremeDeviceId|ExtremeGenAddr|BridgeId|InetAddress|OwnerString/ {
+			return "string";
+		}
+		else {
+			die ("do not understand syntax: " . $syntax . " (cannot decide if sting or int etc)");
+		}
 	}
 }
+
+
+# parse the enums of a field
+sub getEnums {
+	my $field = shift;
+	my @enums;
+	foreach my $enum (keys %{$field->{enums}}) {
+		push @enums, "//    " . $field->{enums}{$enum} . " (" . $enum . ")\n";
+	}
+	@enums = sort @enums;
+	return \@enums;
+}
+
+# parse the ranges of a field
+sub getRanges {
+	my $field = shift;
+	my @ranges;
+	
+	foreach my $range (@{$field->{ranges}}) {
+		push @ranges, "// range from " . $range->{low} . " (low) to " . $range->{high} . " (high)\n";
+	}
+	return \@ranges;
+}
+
+
+# get the longest common OID  given two OIDs
 sub longestCommonOid {
 	my $first = shift;
 	my $second = shift;
@@ -179,33 +190,59 @@ sub longestCommonOid {
 	return substr ($first, 0, $common_prefix_length);
 }
 
+
+# add a field to a module
 sub addModuleField {
 	my $field = shift;
-	my $type = shift;
 	
+	my $fieldType = getType($field->{syntax});
+	
+	# add it to the mibModules
 	$mibModules->{$field->{moduleID}}->{fields}->{$field->{objectID}} = {
 		id => $field->{objectID},
-		type => $type,
-		name => $field->{label}
+		type => $fieldType,
+		name => ucfirst $field->{label},
+		syntax => $field->{syntax},
+		description => $field->{description}
 	};
 	
+	# more information
+	if ($field->{enums}) {
+		$mibModules->{$field->{moduleID}}->{fields}->{$field->{objectID}}->{enums} = getEnums ($field);
+	}
+	if ($field->{ranges}) {
+		$mibModules->{$field->{moduleID}}->{fields}->{$field->{objectID}}->{ranges} = getRanges ($field);
+	}
+	
+	# set common OID for the module
 	$mibModules->{$field->{moduleID}}->{commonOid} = longestCommonOid ($mibModules->{$field->{moduleID}}->{commonOid}, $field->{objectID});
 	
+	# indicate that this file should have big.Int inclusion in the file preamble
+	if (index ($fieldType, "big.Int") >= 0) {
+		$mibModules->{$field->{moduleID}}->{needsBigInt} = true;
+	}
 }
 
+# add a table to a module
 sub addModuleTable {
 	my $field = shift;
 	my $tableOid = shift;
 	
+	# table setup
 	$mibModules->{$field->{moduleID}}->{tables}->{$tableOid} = {
 		id => $field->{objectID},
+		name => ucfirst $field->{label},
 		type => undef,
-		fields => {}
+		fields => {},
+		description => $field->{description},
+		needsBigInt => false
 	};
 	
+	# set common OID for the module
 	$mibModules->{$field->{moduleID}}->{commonOid} = longestCommonOid ($mibModules->{$field->{moduleID}}->{commonOid}, $field->{objectID});
 }
 
+# define a table's entries type
 sub declareModuleTableEntryType {
 	my $field = shift;
 	my $tableOid = shift;
@@ -214,15 +251,33 @@ sub declareModuleTableEntryType {
 	$mibModules->{$field->{moduleID}}->{tables}->{$tableOid}->{type} = $type;
 }
 
+# add a field to a table of a module
 sub addModuleTableField {
 	my $field = shift;
 	my $tableOid = shift;
-	my $type = shift;
+	
+	my $fieldType = getType($field->{syntax});
+	
 	$mibModules->{$field->{moduleID}}->{tables}->{$tableOid}->{fields}->{$field->{objectID}} = {
 		id => $field->{objectID},
-		type => $type,
-		name => $field->{label}
+		type => $fieldType,
+		name => ucfirst $field->{label},
+		syntax => $field->{syntax},
+		description => $field->{description}
 	};
+	
+	if ($field->{enums}) {
+		$mibModules->{$field->{moduleID}}->{tables}->{$tableOid}->{fields}->{$field->{objectID}}->{enums} = getEnums ($field);
+	}
+	
+	if ($field->{ranges}) {
+		$mibModules->{$field->{moduleID}}->{tables}->{$tableOid}->{fields}->{$field->{objectID}}->{ranges} = getRanges ($field);
+	}
+	
+	# does the table definition need big.Int?
+	if (index ($fieldType, "big.Int") >= 0) {
+		$mibModules->{$field->{moduleID}}->{tables}->{$tableOid}->{needsBigInt} = true;
+	}
 }
 	
 	
@@ -237,109 +292,28 @@ foreach my $k (sort (map {version->declare($_)} keys %extremeOids))
 	
 	my $module = $extremeOids{$k}{moduleID};
 	my $oid = $extremeOids{$k}{objectID};
-	print "processing ", $module, " -> ", $extremeOids{$k}{label}, "\n";
+# 	print "processing ", $module, " -> ", $extremeOids{$k}{label}, "\n";
 	
-	
-	if ($tableOid)
-	{
-		$currentFile = getFile ($module, true, $oid);
-		$nonTableFile = getFile ($module, false, $oid);
+	if (!$mibModules->{$extremeOids{$k}{moduleID}}) {
+		$mibModules->{$extremeOids{$k}{moduleID}} = {
+			id => $extremeOids{$k}{moduleID},
+			name => getModuleName ($extremeOids{$k}{moduleID}),
+			commonOid => $extremeOids{$k}{objectID},
+			needsBigInt => false,
+			tablesNeedBigInt => false
+		};
 	}
-	else
-	{
-		$currentFile = getFile ($module, false, $oid);
-		$nonTableFile = $currentFile;
-	}
-	
-	
-	# 	print Dumper(SNMP::getType ($oid));
-# 	print Dumper();
-# 	print Dumper($extremeOids{$k}{type});
-# 	print Dumper($extremeOids{$k}{access});
-# 	print Dumper($extremeOids{$k}{status});
-# 	print Dumper($extremeOids{$k}{syntax});
-# 	print Dumper($extremeOids{$k}{textualConvention});
-# 	print Dumper($extremeOids{$k}{units});
 	
 	if ($tableOid && index ($oid, $tableOid) < 0) {
-		
-		if ($tableModule eq $module)
-		{
-			print $currentFile "\n\n}\n";
-		}
-		
+		# if the tableOid if not longer substring of the current OID we left the table
 		$tableOid = undef;
 		$tableModule = undef;
-		# we want to go back to the base file...
-		$currentFile = $nonTableFile;
 	}
-	
-	if ($tableOid && $tableOid.".1" eq $oid) {
-		print $nonTableFile $tableOidLabel, " []", ucfirst ($extremeOids{$k}{label}), "\n\n\n";
-	}
-	
-	
-	
-	print $currentFile "// ", ucfirst ($extremeOids{$k}{label}), " ", $oid, "\n";
-	
-	if ($extremeOids{$k}{description}) {
-		foreach my $line (split '\n', $extremeOids{$k}{description}) {
-			$line =~ s/^\s+|\s+$//g;
-			print $currentFile "// ", $line, "\n";
-		}
-	}
-	
-	my $syntax = $extremeOids{$k}{syntax};
-	
-	foreach my $range (@{$extremeOids{$k}{ranges}}) {
-		print $currentFile "// range from ", $range->{low}, " (low) to ", $range->{high}, " (high)\n";
-	}
-	
-	my @enums;
-	foreach my $enum (keys %{$extremeOids{$k}{enums}}) {
-		push @enums, "//    " . $extremeOids{$k}{enums}{$enum} . " (" . $enum . ")\n";
-	}
-	print $currentFile sort @enums;
-	
-	my $type = "*big.Int";
-	if ($syntax)
-	{
-		print $currentFile "// ", $extremeOids{$k}{syntax}, "\n";
-		
-		switch ($syntax) {
-			case /INTEGER|UNSIGNED32|ExtremeVlanType|ExtremeVlanEncapsType|RowStatus|COUNTER(64)?|ClientAuthType|TICKS|BITS|Timeout|ExtremeWirelessCountryCode|ExtremeWirelessAntennaType|TestAndIncr|ExtremeWirelessPhysInterfaceIndex|Dot11Speed|Dot11AChannel|ExtremeWirelessChannelAutoSelectStatus|NetworkAuthMode|Dot11AuthMode|ExtremeWirelessVirtInterfaceIndex|WPACipherSet|InterfaceIndex|Dot11Type|WirelessRemoteConnectBindingType|AuthServerType|TimeStamp|GAUGE|AuthServerAccessType|WPAKeyMgmtSet|ExtremeWirelessAntennaLocation/ {
-				$type = " *big.Int";
-			}
-			case "TruthValue" {
-				$type = "bool";
-			}
-			case /DisplayString|IPADDR|PortList|MacAddress|OBJECTID|OCTETSTR|L4Port|ExtremeDeviceId|ExtremeGenAddr|BridgeId|InetAddress|OwnerString/ {
-				$type = "string";
-			}
-			else {
-				die ("do not understand syntax: " . $syntax . " (cannot decide if sting or int etc)");
-			}
-		}
-		
-		print $currentFile ucfirst ($extremeOids{$k}{label}), " ", $type, "\n\n";
-	}
-	
-	
-	
-	if ($tableOid && $tableOid.".1" eq $oid) {
-		my $entryStruct = ucfirst ($extremeOids{$k}{label});
-		print $currentFile "type ", $entryStruct, " struct {\n";
-		declareModuleTableEntryType ($extremeOids{$k}, $tableOid, $entryStruct);
-	}
-	
 	
 	if ($extremeOids{$k}{label} =~ /.*Table$/) {
 		$tableOid = $oid;
 		$tableOidLabel = ucfirst ($extremeOids{$k}{label});
 		$tableModule = $module;
-	}
-	else {
-		print $currentFile "\n\n";
 	}
 	
 	
@@ -347,62 +321,307 @@ foreach my $k (sort (map {version->declare($_)} keys %extremeOids))
 	
 	if (!$tableOid) {
 		# this is a module field
-		addModuleField ($extremeOids{$k}, $type);
+		addModuleField ($extremeOids{$k});
 	}
 	elsif ($tableOid eq $oid) {
 		# this is a table
 		addModuleTable ($extremeOids{$k}, $tableOid);
 	}
 	else {
-		# this is a table field
-		addModuleTableField ($extremeOids{$k}, $tableOid, $type);
+		if ($tableOid.".1" eq $oid) {
+			# this is the table entry defintion
+			my $entryStruct = ucfirst ($extremeOids{$k}{label});
+			declareModuleTableEntryType ($extremeOids{$k}, $tableOid, $entryStruct);
+		}	else {
+			# this is a table field
+			addModuleTableField ($extremeOids{$k}, $tableOid);
+		}
 	}
 	
 	
 }
 
 
-# finish last file if it was a table
-# print $currentFile "}\n" if $tableOid;
+sub writeFormatedDescription {
+	my $description = shift;
+	my $file = shift;
+	my $indent = shift;
+	foreach my $line (split '\n', $description) {
+		$line =~ s/^\s+|\s+$//g;
+		print $file $indent . "// ", $line, "\n";
+	}
+}
+
+sub writeTableStructure {
+	my $f = shift;
+	my $table = shift;
+	
+	print $f "// " . $table->{name} . " " . $table->{id} . "\n";
+	writeFormatedDescription ($table->{description}, $f, "");
+	print $f "type ", $table->{type}, " struct {\n\n";
+	
+	# write all the table fields
+	foreach my $k (keys %{$table->{fields}}) {
+		writeField ($f, $table->{fields}->{$k});
+	}
+	
+	print $f "}\n\n";
+}
 
 
+sub writeField {
+	my $f = shift;
+	my $field = shift;
+	
+	print $f $indentation . "// " . $field->{name} . " " . $field->{id} . "\n";
+	writeFormatedDescription ($field->{description}, $f, $indentation);
+	
+	if ($field->{syntax}) {
+		print $f $indentation . "// " . $field->{syntax} . "\n";
+	}
+		
+	if ($field->{ranges} && scalar($field->{ranges})) {
+		# 			print Dumper($field->{ranges});
+		foreach my $r (@{$field->{ranges}}) {
+			print $f $indentation . $r;
+		}
+	}
+	
+	if ($field->{enums} && scalar($field->{enums})) {
+		# 			print Dumper($field->{enums});
+		foreach my $r (@{$field->{enums}}) {
+			print $f $indentation . $r;
+		}
+	}
+	
+	print $f $indentation . $field->{name} . " " . $field->{type} . "\n\n\n";
+}
 
-# close all files
-foreach my $k (keys %$extremeFiles){
-	my $file = $extremeFiles->{$k};
+
+sub writeClassStructure {
+	my $module = shift;
+	#print $module->{id};
+	my $filename = $filebase."/".$module->{id}.".go";
+	my $filenameTables = $filebase."/".$module->{id}."-tables.go";
+	open (my $f, '>', $filename) || die ("cannot open file " . $filename);
+	open (my $ft, '>', $filenameTables) || die ("cannot open file " . $filenameTables);
 	
-	# if the last entry in a module is 
-	# * a table we won't write a final } to the table files
-	# * _not_ a table we will write a final } to the table defintion
-	# we fix that in the above code, will be cumbersome, or we just
-	# seek back 2 bytes and overwrite the } with another } if it was
-	# set previously ;-)
-	seek($file, -2, 1);
+# 	print "created ",$filename," and ",$filenameTables,"\n";
 	
 	
-	print $file "}\n\n";
-	close ($file);
+	# preamble for module file
+	if ($module->{needsBigInt})
+	{
+		print $f getFilePreamble ($packagename, ["math/big"]);
+	}
+	else
+	{
+		print $f getFilePreamble ($packagename, []);
+	}
+	print $f "// MIB MODULE ", $module->{id}, "\n";
+	print $f "// longest common oid is ", $module->{commonOid}, "\n";
+	print $f "type ", $module->{name}, " struct {\n\n";
+	
+	
+	
+	# add this module to the package structure
+	$packageFile{classStructure} .= $indentation . "// MIB MODULE ". $module->{id}. "\n";
+	$packageFile{classStructure} .= $indentation . "// longest common oid is ". $module->{commonOid}. "\n";
+	$packageFile{classStructure} .= $indentation . $module->{name}."Module ". $module->{name}. "\n\n\n";
+	
+	# add to the retriever function
+	$packageFile{snmpParseFunc} .= $indentation . "// retrieving details about the module ". $module->{id}. "\n";
+	$packageFile{snmpParseFunc} .= $indentation . $module->{id}. ".RetrieveEnterpriseModuleDetails (snmp)\n\n\n";
+	
+	# add to the string function
+	$packageFile{stringFunc} .= $indentation . "// print details about the module ". $module->{id}. "\n";
+	$packageFile{stringFunc} .= $indentation . $module->{id}. ".String ()\n\n\n";
+	
+	
+	
+	# preamble for tables file
+	if ($module->{tablesNeedBigInt})
+	{
+		print $ft getFilePreamble ($packagename, ["math/big"]);
+	}
+	else
+	{
+		print $ft getFilePreamble ($packagename, []);
+	}
+	print $ft "// tables of MIB MODULE ", $module->{id}, "\n";
+	
+	
+	
+	# write all the simple fields
+	foreach my $k (keys %{$module->{fields}}) {
+		writeField ($f, $module->{fields}->{$k});
+	}
+	
+	
+	#write the tables
+ 	foreach my $k (keys %{$module->{tables}}) {
+		print $f $indentation . "// " . $module->{tables}->{$k}->{name} . " " . $module->{tables}->{$k}->{id} . "\n";
+		writeFormatedDescription ($module->{tables}->{$k}->{description}, $f, $indentation);
+		
+		print $f $indentation . $module->{tables}->{$k}->{name} . " []" . $module->{tables}->{$k}->{type} . "\n\n\n";
+		
+		writeTableStructure ($ft, $module->{tables}->{$k});
+	}
+	
+	print $f "}\n\n\n";
+	
+	
+	# generate the ParseSnmpFieldDetails function
+	print $f "func (e *" . $module->{name} . ") ParseSnmpFieldDetails (pdu gosnmp.SnmpPDU) error {\n\n";
+	print $f $indentation . "oid = pdu.Name\n\n";
+	print $f $indentation . "switch oid {\n";
+	foreach my $k (sort keys %{$module->{fields}}) {
+		print $f $indentation . $indentation . "case \"".$k."\": \n";
+		
+		switch ($module->{fields}->{$k}->{type}) {
+			case "*big.Int" {
+				print $f $indentation . $indentation . $indentation . $module->{fields}->{$k}->{name} . " = gosnmp.ToBigInt(pdu.Value)\n";
+			}
+			case "bool" {
+				print $f $indentation . $indentation . $indentation . $module->{fields}->{$k}->{name} . " = pdu.Value\n";
+			}
+			case "string" {
+				print $f $indentation . $indentation . $indentation . $module->{fields}->{$k}->{name} . " = pdu.Value.(string)\n";
+			}
+			else {
+				die ("do not understand type: " . $module->{fields}->{$k}->{type} . " (cannot decide if sting or int etc)");
+			}
+		}
+	};
+	print $f $indentation . $indentation . "default:\n";
+	print $f $indentation . $indentation . $indentation . "log.Printf(\"do not understand field %v (%d) -> %v\", pdu.Name, pdu.Type, pdu.Value)\n";
+	print $f $indentation . "}\n";
+	print $f $indentation . "return nil\n";
+	print $f "}\n\n\n";
+	
+	
+	
+	# generate the ParseSnmpTableDetails function
+	print $f "func (e *" . $module->{name} . ") ParseSnmpTableDetails (pdu gosnmp.SnmpPDU) error {\n\n";
+	print $f $indentation . "oid = pdu.Name\n\n";
+	foreach my $k (sort keys %{$module->{tables}}) {
+		my $table = $module->{tables}->{$k};
+		print $f $indentation . "// table for " . $table->{name} . "\n";
+		print $f $indentation . "if strings.Contains(oid, \"" . $table->{id} . "\") {\n";
+# 		print $f $indentation . $indentation . "switch oid {\n";
+		my $n = 0;
+		foreach my $field (sort keys %{$table->{fields}}) {
+			if ($n == 0)
+			{
+				print $f $indentation . $indentation . "if strings.Contains(oid, \"".$field."\") {\n";
+			}
+			else
+			{
+				print $f $indentation . $indentation . "} else if strings.Contains(oid, \"".$field."\") {\n";
+			}
+			
+			print $f $indentation . $indentation . $indentation . $module->{tables}->{$k}->{name};
+			# table index
+			print $f "[".(length($field) + 1).":]";
+			# table field
+			print $f "." . $table->{fields}->{$field}->{name};
+			# value
+			switch ($table->{fields}->{$field}->{type}) {
+				case "*big.Int" {
+					print $f " = gosnmp.ToBigInt(pdu.Value)\n";
+				}
+				case "bool" {
+					print $f " = pdu.Value\n";
+				}
+				case "string" {
+					print $f " = pdu.Value.(string)\n";
+				}
+				else {
+					die ("do not understand type: " . $table->{fields}->{$field}->{type} . " (cannot decide if sting or int etc)");
+				}
+			}
+			$n = $n + 1;
+		};
+		print $f $indentation . $indentation . "} else {\n";
+		print $f $indentation . $indentation . $indentation . "log.Printf(\"do not understand field %v (%d) -> %v\", pdu.Name, pdu.Type, pdu.Value)\n";
+		print $f $indentation . $indentation . "}\n";
+		print $f $indentation . $indentation . "return nil\n";
+		print $f $indentation . "}\n\n";
+	}
+	print $f $indentation . "return nil\n";
+	print $f "}\n\n\n";
+	
+	
+	
+	
+	
+	# generate the RetrieveEnterpriseModuleDetails function
+	print $f "func (e *" . $module->{name} . ") RetrieveEnterpriseModuleDetails (snmp *gosnmp.GoSNMP) {\n\n";
+	
+	# bulk walk over all single fields
+	print $f $indentation . "// get information about all fields\n";
+	my $fieldOids = $indentation . "fields = []string {\n";
+	foreach my $k (keys %{$module->{fields}}) {
+		$fieldOids .= $indentation . $indentation . "\"$k\",\n" ;
+	}
+	print $f $fieldOids . $indentation . "}\n";
+	print $f $indentation . "err := snmp.GetBulk (fields, e.ParseSnmpFieldDetails)\n" . 
+		$indentation . "if err != nil {\n" .
+		$indentation . $indentation . "log.Fatalf(\"Getting fields returned err: %v\", err)\n" .
+		$indentation . "}\n\n\n\n";
+	
+	
+	# for every table: walk over the table
+	foreach my $k (sort keys %{$module->{tables}}) {
+		print $f $indentation . "// get information table " . $module->{tables}->{$k}->{name} . "\n";
+		print $f $indentation . "err := snmp.BulkWalk (\"" . $k . "\", e.ParseSnmpTablesDetails)\n" . 
+			$indentation . "if err != nil {\n" .
+			$indentation . $indentation . "log.Fatalf(\"Getting fields returned err: %v\", err)\n" .
+			$indentation . "}\n\n";
+	}
+	
+	
+	
+	print $f "\n}\n\n\n";
+	
+	
+	close $f;
+	close $ft;
 }
 
 
 
+
+
+# write files
 foreach my $k (keys %$mibModules){
-	print $mibModules->{$k}->{commonOid},"\n";
-# 	if ($k eq "EXTREME-RTSTATS-MIB") {
-	if ($k eq "EXTREME-SYSTEM-MIB") {
-		print Dumper($mibModules->{$k});
-	}
+	writeClassStructure ($mibModules->{$k});
 }
 
 
+my $packageTypeName = ucfirst $packagename;
+
+my $filename = $filebase."/enterprise.go";
+open (my $enterpriseFile, '>', $filename) || die ("cannot open file " . $filename);
+print $enterpriseFile getFilePreamble ($packagename, ["github.com/soniah/gosnmp"]);
+
+
+print $enterpriseFile "type " . $packageTypeName . " struct {\n\n";
+print $enterpriseFile $packageFile{classStructure} . "\n";
+print $enterpriseFile "\n}\n\n\n";
+
+print $enterpriseFile "func (e *" . $packageTypeName . ") RetrieveEnterpriseDetails (snmp *gosnmp.GoSNMP) {";
+print $enterpriseFile $packageFile{snmpParseFunc} . "\n";
+print $enterpriseFile "\n}\n\n\n";
+
+print $enterpriseFile "func (e *" . $packageTypeName . ") String() string {";
+print $enterpriseFile $packageFile{stringFunc} . "\n";
+print $enterpriseFile "\n}\n\n\n";
 
 
 
 
-
-
-
-
+close ($enterpriseFile);
 
 
 
