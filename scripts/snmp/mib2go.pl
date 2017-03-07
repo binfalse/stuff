@@ -195,6 +195,7 @@ sub longestCommonOid {
 sub addModuleField {
 	my $field = shift;
 	
+# 	print $field->{objectID}. "--" . $field->{label} . "--".$field->{syntax}."\n";
 	my $fieldType = getType($field->{syntax});
 	
 	# add it to the mibModules
@@ -218,7 +219,7 @@ sub addModuleField {
 	$mibModules->{$field->{moduleID}}->{commonOid} = longestCommonOid ($mibModules->{$field->{moduleID}}->{commonOid}, $field->{objectID});
 	
 	# indicate that this file should have big.Int inclusion in the file preamble
-	if (index ($fieldType, "big.Int") >= 0) {
+	if ($fieldType && index ($fieldType, "big.Int") >= 0) {
 		$mibModules->{$field->{moduleID}}->{needsBigInt} = true;
 	}
 }
@@ -288,7 +289,7 @@ sub addModuleTableField {
 # iterate all OIDs that we need to process
 foreach my $k (sort (map {version->declare($_)} keys %extremeOids))
 {
-	next if !$extremeOids{$k}{status} || lc $extremeOids{$k}{status} eq "deprecated";
+	next if !$extremeOids{$k}{status};# || lc $extremeOids{$k}{status} eq "deprecated";
 	
 	my $module = $extremeOids{$k}{moduleID};
 	my $oid = $extremeOids{$k}{objectID};
@@ -310,14 +311,13 @@ foreach my $k (sort (map {version->declare($_)} keys %extremeOids))
 		$tableModule = undef;
 	}
 	
-	if ($extremeOids{$k}{label} =~ /.*Table$/) {
+	
+	# unfortunatelly we don't have other hints for tables in perl's SNMP?
+	if ($extremeOids{$k}{access} eq "NoAccess" and $extremeOids{$k}{label} =~ /.*Table$/) {
 		$tableOid = $oid;
 		$tableOidLabel = ucfirst ($extremeOids{$k}{label});
 		$tableModule = $module;
 	}
-	
-	
-	
 	
 	if (!$tableOid) {
 		# this is a module field
@@ -393,7 +393,7 @@ sub writeField {
 			print $f $indentation . $r;
 		}
 	}
-	
+	print Dumper($field) if (!$field->{type});
 	print $f $indentation . $field->{name} . " " . $field->{type} . "\n\n\n";
 }
 
@@ -464,6 +464,10 @@ sub writeClassStructure {
 		writeFormatedDescription ($module->{tables}->{$k}->{description}, $f, $indentation);
 		
 		print $f $indentation . $module->{tables}->{$k}->{name} . " []" . $module->{tables}->{$k}->{type} . "\n\n\n";
+# 		if (!$module->{tables}->{$k}->{type})
+# 		{
+# 			print Dumper($module->{tables}->{$k});
+# 		}
 		
 		writeTableStructure ($ft, $module->{tables}->{$k});
 	}
