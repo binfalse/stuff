@@ -444,7 +444,7 @@ sub writeClassStructure {
 	
 	
 	# preamble for module file
-	my @mainPackages = ("github.com/soniah/gosnmp", "log");
+	my @mainPackages = ("github.com/soniah/gosnmp", "log", "fmt", "bytes");
 	push (@mainPackages, "math/big") if ($module->{needsBigInt});
 	push (@mainPackages, "strings") if ($module->{tables});
 	
@@ -466,7 +466,8 @@ sub writeClassStructure {
 	
 	# add to the string function
 	$packageFile{stringFunc} .= $indentation . "// print details about the module ". $module->{id}. "\n";
-	$packageFile{stringFunc} .= $indentation . "e." . $module->{name}. "Module.String ()\n\n\n";
+	$packageFile{stringFunc} .= $indentation . "buffer.WriteString (e." . $module->{name}. "Module.String ())\n";
+	$packageFile{stringFunc} .= $indentation . "buffer.WriteString (\"\\n\")\n\n";
 	
 	
 	
@@ -521,41 +522,44 @@ sub writeClassStructure {
 	
 	# generate the ParseSnmpTableDetails function
 	print $f "func (e *" . $module->{name} . ") ParseSnmpTableDetails (pdu gosnmp.SnmpPDU) error {\n\n";
-	print $f $indentation . "oid := pdu.Name\n\n";
-	foreach my $k (sort keys %{$module->{tables}}) {
-		my $table = $module->{tables}->{$k};
-		print $f $indentation . "// table for " . $table->{name} . "\n";
-		print $f $indentation . "if strings.Contains(oid, \"" . $table->{id} . "\") {\n";
-# 		print $f $indentation . $indentation . "switch oid {\n";
-		my $n = 0;
-		foreach my $field (sort keys %{$table->{fields}}) {
-			if ($n == 0)
-			{
-				print $f $indentation . $indentation . "if strings.Contains(oid, \"".$field."\") {\n";
-			}
-			else
-			{
-				print $f $indentation . $indentation . "} else if strings.Contains(oid, \"".$field."\") {\n";
-			}
-			
-			# needs to be a bit complex as we cannot assign to struct fields in a map
-			# https://groups.google.com/forum/#!topic/golang-nuts/4_pabWnsMp0
-			print $f $indentation . $indentation . $indentation . "rowId := oid[".(length($field) + 1).":]\n";
-			print $f $indentation . $indentation . $indentation . "row := e." . $module->{tables}->{$k}->{name}."[rowId]\n";
-			print $f $indentation . $indentation . $indentation . "if row == nil {\n";
-			print $f $indentation . $indentation . $indentation . $indentation . "row = &".$table->{type}."{}\n";
-			print $f $indentation . $indentation . $indentation . $indentation . "e." . $module->{tables}->{$k}->{name}."[rowId] = row\n";
-			print $f $indentation . $indentation . $indentation . "}\n";
-			
-			# value
-			print $f $indentation . $indentation . $indentation . "row." . $table->{fields}->{$field}->{name} . getValueAssignment ($table->{fields}->{$field}->{type}) . "\n";
-			$n = $n + 1;
-		};
-		print $f $indentation . $indentation . "} else {\n";
-		print $f $indentation . $indentation . $indentation . "log.Printf(\"do not understand field %v (%d) -> %v\", pdu.Name, pdu.Type, pdu.Value)\n";
-		print $f $indentation . $indentation . "}\n";
-		print $f $indentation . $indentation . "return nil\n";
-		print $f $indentation . "}\n\n";
+	if ($module->{tables} && scalar keys %{$module->{tables}})
+	{
+		print $f $indentation . "oid := pdu.Name\n\n";
+		foreach my $k (sort keys %{$module->{tables}}) {
+			my $table = $module->{tables}->{$k};
+			print $f $indentation . "// table for " . $table->{name} . "\n";
+			print $f $indentation . "if strings.Contains(oid, \"" . $table->{id} . "\") {\n";
+	# 		print $f $indentation . $indentation . "switch oid {\n";
+			my $n = 0;
+			foreach my $field (sort keys %{$table->{fields}}) {
+				if ($n == 0)
+				{
+					print $f $indentation . $indentation . "if strings.Contains(oid, \"".$field."\") {\n";
+				}
+				else
+				{
+					print $f $indentation . $indentation . "} else if strings.Contains(oid, \"".$field."\") {\n";
+				}
+				
+				# needs to be a bit complex as we cannot assign to struct fields in a map
+				# https://groups.google.com/forum/#!topic/golang-nuts/4_pabWnsMp0
+				print $f $indentation . $indentation . $indentation . "rowId := oid[".(length($field) + 1).":]\n";
+				print $f $indentation . $indentation . $indentation . "row := e." . $module->{tables}->{$k}->{name}."[rowId]\n";
+				print $f $indentation . $indentation . $indentation . "if row == nil {\n";
+				print $f $indentation . $indentation . $indentation . $indentation . "row = &".$table->{type}."{}\n";
+				print $f $indentation . $indentation . $indentation . $indentation . "e." . $module->{tables}->{$k}->{name}."[rowId] = row\n";
+				print $f $indentation . $indentation . $indentation . "}\n";
+				
+				# value
+				print $f $indentation . $indentation . $indentation . "row." . $table->{fields}->{$field}->{name} . getValueAssignment ($table->{fields}->{$field}->{type}) . "\n";
+				$n = $n + 1;
+			};
+			print $f $indentation . $indentation . "} else {\n";
+			print $f $indentation . $indentation . $indentation . "log.Printf(\"do not understand field %v (%d) -> %v\", pdu.Name, pdu.Type, pdu.Value)\n";
+			print $f $indentation . $indentation . "}\n";
+			print $f $indentation . $indentation . "return nil\n";
+			print $f $indentation . "}\n\n";
+		}
 	}
 	print $f $indentation . "return nil\n";
 	print $f "}\n\n\n";
@@ -597,6 +601,45 @@ sub writeClassStructure {
 	print $f "\n}\n\n\n";
 	
 	
+	
+	# generate the String function
+	print $f "func (e *" . $module->{name} . ") String () string {\n\n";
+	print $f $indentation . "var buffer bytes.Buffer\n\n\n";
+	print $f $indentation . "buffer.WriteString (fmt.Sprintf(\"- MODULE ".$module->{name}."\\n\"))\n\n\n";
+	print $f $indentation . "// FIELDS\n";
+	foreach my $k (keys %{$module->{fields}}) {
+		print $f $indentation . "buffer.WriteString (fmt.Sprintf(\" -> FIELD[".$k."] = %v (".$module->{fields}->{$k}->{name}.")\\n\", e.".$module->{fields}->{$k}->{name}."))\n";
+	}
+	print $f "\n\n";
+	
+	print $f $indentation . "// TABLES\n";
+	foreach my $k (sort keys %{$module->{tables}}) {
+		print $f $indentation . "buffer.WriteString (fmt.Sprintf(\" -> TABLE[".$k."]: (".$module->{tables}->{$k}->{name}." of types ".$module->{tables}->{$k}->{type}.")\\n\"))\n";
+		print $f $indentation . "buffer.WriteString (fmt.Sprintf(\"    ROWID\t";
+		foreach my $field (sort keys %{$module->{tables}->{$k}->{fields}}) {
+			print $f $module->{tables}->{$k}->{fields}->{$field}->{name} . "\t";
+		}
+		print $f "\"))\n";
+		
+		
+		print $f $indentation . "for k,v := range e." . $module->{tables}->{$k}->{name} ." {\n";
+		
+		print $f $indentation . $indentation . "buffer.WriteString (fmt.Sprintf(\"    %v\t\", k))\n";
+		foreach my $field (sort keys %{$module->{tables}->{$k}->{fields}}) {
+			print $f $indentation . $indentation . "buffer.WriteString (fmt.Sprintf(\"%v\t\", v.".$module->{tables}->{$k}->{fields}->{$field}->{name}."))\n";
+		}
+		print $f $indentation . $indentation . "buffer.WriteString (fmt.Sprintf(\"\\n\"))\n";
+		print $f $indentation . "}\n";
+		
+		print $f "\n\n";
+	}
+	
+	
+	print $f $indentation . "return buffer.String()";
+	
+	
+	print $f "\n}\n\n\n";
+	
 	close $f;
 	close $ft;
 }
@@ -615,7 +658,7 @@ my $packageTypeName = ucfirst $packagename;
 
 my $filename = $filebase."/enterprise.go";
 open (my $enterpriseFile, '>', $filename) || die ("cannot open file " . $filename);
-print $enterpriseFile getFilePreamble ($packagename, ["github.com/soniah/gosnmp"]);
+print $enterpriseFile getFilePreamble ($packagename, ["github.com/soniah/gosnmp", "bytes"]);
 
 
 print $enterpriseFile "type " . $packageTypeName . " struct {\n\n";
@@ -627,7 +670,9 @@ print $enterpriseFile $packageFile{snmpParseFunc} . "\n";
 print $enterpriseFile "\n}\n\n\n";
 
 print $enterpriseFile "func (e *" . $packageTypeName . ") String() string {\n";
+print $enterpriseFile $indentation . "var buffer bytes.Buffer\n\n\n";
 print $enterpriseFile $packageFile{stringFunc} . "\n";
+print $enterpriseFile $indentation . "return buffer.String()";
 print $enterpriseFile "\n}\n\n\n";
 
 
