@@ -341,6 +341,41 @@ foreach my $k (sort (map {version->declare($_)} keys %extremeOids))
 }
 
 
+
+
+
+
+
+
+
+
+sub getValueAssignment {
+	my $type = shift;
+	switch ($type) {
+		case "*big.Int" {
+			return  " = gosnmp.ToBigInt(pdu.Value)";
+		}
+		case "bool" {
+			return  " = pdu.Value.(bool)";
+		}
+		case "string" {
+			return  " = pdu.Value.(string)";
+		}
+		else {
+			die ("do not understand type: " . $type . " (cannot decide if sting or int etc)");
+		}
+	}
+}
+
+
+
+
+
+
+
+
+
+
 sub writeFormatedDescription {
 	my $description = shift;
 	my $file = shift;
@@ -409,14 +444,11 @@ sub writeClassStructure {
 	
 	
 	# preamble for module file
-	if ($module->{needsBigInt})
-	{
-		print $f getFilePreamble ($packagename, ["math/big", "github.com/soniah/gosnmp"]);
-	}
-	else
-	{
-		print $f getFilePreamble ($packagename, ["github.com/soniah/gosnmp"]);
-	}
+	my @mainPackages = ("github.com/soniah/gosnmp", "log");
+	push (@mainPackages, "math/big") if ($module->{needsBigInt});
+	push (@mainPackages, "strings") if ($module->{tables});
+	
+	print $f getFilePreamble ($packagename, \@mainPackages);
 	print $f "// MIB MODULE ", $module->{id}, "\n";
 	print $f "// longest common oid is ", $module->{commonOid}, "\n";
 	print $f "type ", $module->{name}, " struct {\n\n";
@@ -430,23 +462,19 @@ sub writeClassStructure {
 	
 	# add to the retriever function
 	$packageFile{snmpParseFunc} .= $indentation . "// retrieving details about the module ". $module->{id}. "\n";
-	$packageFile{snmpParseFunc} .= $indentation . $module->{id}. ".RetrieveEnterpriseModuleDetails (snmp)\n\n\n";
+	$packageFile{snmpParseFunc} .= $indentation . "e." . $module->{name}. "Module.RetrieveEnterpriseModuleDetails (snmp)\n\n\n";
 	
 	# add to the string function
 	$packageFile{stringFunc} .= $indentation . "// print details about the module ". $module->{id}. "\n";
-	$packageFile{stringFunc} .= $indentation . $module->{id}. ".String ()\n\n\n";
+	$packageFile{stringFunc} .= $indentation . "e." . $module->{name}. "Module.String ()\n\n\n";
 	
 	
 	
+	my @tablesPackages;
 	# preamble for tables file
-	if ($module->{tablesNeedBigInt})
-	{
-		print $ft getFilePreamble ($packagename, ["math/big"]);
-	}
-	else
-	{
-		print $ft getFilePreamble ($packagename, []);
-	}
+	push (@tablesPackages, "math/big") if ($module->{tablesNeedBigInt});
+	
+	print $ft getFilePreamble ($packagename, \@tablesPackages);
 	print $ft "// tables of MIB MODULE ", $module->{id}, "\n";
 	
 	
@@ -462,7 +490,7 @@ sub writeClassStructure {
 		print $f $indentation . "// " . $module->{tables}->{$k}->{name} . " " . $module->{tables}->{$k}->{id} . "\n";
 		writeFormatedDescription ($module->{tables}->{$k}->{description}, $f, $indentation);
 		
-		print $f $indentation . $module->{tables}->{$k}->{name} . " []" . $module->{tables}->{$k}->{type} . "\n\n\n";
+		print $f $indentation . $module->{tables}->{$k}->{name} . " map[string]*" . $module->{tables}->{$k}->{type} . "\n\n\n";
 # 		if (!$module->{tables}->{$k}->{type})
 # 		{
 # 			print Dumper($module->{tables}->{$k});
@@ -476,25 +504,12 @@ sub writeClassStructure {
 	
 	# generate the ParseSnmpFieldDetails function
 	print $f "func (e *" . $module->{name} . ") ParseSnmpFieldDetails (pdu gosnmp.SnmpPDU) error {\n\n";
-	print $f $indentation . "oid = pdu.Name\n\n";
+	print $f $indentation . "oid := pdu.Name\n\n";
 	print $f $indentation . "switch oid {\n";
 	foreach my $k (sort keys %{$module->{fields}}) {
 		print $f $indentation . $indentation . "case \"".$k."\": \n";
 		
-		switch ($module->{fields}->{$k}->{type}) {
-			case "*big.Int" {
-				print $f $indentation . $indentation . $indentation . $module->{fields}->{$k}->{name} . " = gosnmp.ToBigInt(pdu.Value)\n";
-			}
-			case "bool" {
-				print $f $indentation . $indentation . $indentation . $module->{fields}->{$k}->{name} . " = pdu.Value\n";
-			}
-			case "string" {
-				print $f $indentation . $indentation . $indentation . $module->{fields}->{$k}->{name} . " = pdu.Value.(string)\n";
-			}
-			else {
-				die ("do not understand type: " . $module->{fields}->{$k}->{type} . " (cannot decide if sting or int etc)");
-			}
-		}
+		print $f $indentation . $indentation . $indentation . "e." . $module->{fields}->{$k}->{name} . getValueAssignment ($module->{fields}->{$k}->{type}) . "\n";
 	};
 	print $f $indentation . $indentation . "default:\n";
 	print $f $indentation . $indentation . $indentation . "log.Printf(\"do not understand field %v (%d) -> %v\", pdu.Name, pdu.Type, pdu.Value)\n";
@@ -506,7 +521,7 @@ sub writeClassStructure {
 	
 	# generate the ParseSnmpTableDetails function
 	print $f "func (e *" . $module->{name} . ") ParseSnmpTableDetails (pdu gosnmp.SnmpPDU) error {\n\n";
-	print $f $indentation . "oid = pdu.Name\n\n";
+	print $f $indentation . "oid := pdu.Name\n\n";
 	foreach my $k (sort keys %{$module->{tables}}) {
 		my $table = $module->{tables}->{$k};
 		print $f $indentation . "// table for " . $table->{name} . "\n";
@@ -523,26 +538,17 @@ sub writeClassStructure {
 				print $f $indentation . $indentation . "} else if strings.Contains(oid, \"".$field."\") {\n";
 			}
 			
-			print $f $indentation . $indentation . $indentation . $module->{tables}->{$k}->{name};
-			# table index
-			print $f "[".(length($field) + 1).":]";
-			# table field
-			print $f "." . $table->{fields}->{$field}->{name};
+			# needs to be a bit complex as we cannot assign to struct fields in a map
+			# https://groups.google.com/forum/#!topic/golang-nuts/4_pabWnsMp0
+			print $f $indentation . $indentation . $indentation . "rowId := oid[".(length($field) + 1).":]\n";
+			print $f $indentation . $indentation . $indentation . "row := e." . $module->{tables}->{$k}->{name}."[rowId]\n";
+			print $f $indentation . $indentation . $indentation . "if row == nil {\n";
+			print $f $indentation . $indentation . $indentation . $indentation . "row = &".$table->{type}."{}\n";
+			print $f $indentation . $indentation . $indentation . $indentation . "e." . $module->{tables}->{$k}->{name}."[rowId] = row\n";
+			print $f $indentation . $indentation . $indentation . "}\n";
+			
 			# value
-			switch ($table->{fields}->{$field}->{type}) {
-				case "*big.Int" {
-					print $f " = gosnmp.ToBigInt(pdu.Value)\n";
-				}
-				case "bool" {
-					print $f " = pdu.Value\n";
-				}
-				case "string" {
-					print $f " = pdu.Value.(string)\n";
-				}
-				else {
-					die ("do not understand type: " . $table->{fields}->{$field}->{type} . " (cannot decide if sting or int etc)");
-				}
-			}
+			print $f $indentation . $indentation . $indentation . "row." . $table->{fields}->{$field}->{name} . getValueAssignment ($table->{fields}->{$field}->{type}) . "\n";
 			$n = $n + 1;
 		};
 		print $f $indentation . $indentation . "} else {\n";
@@ -563,21 +569,24 @@ sub writeClassStructure {
 	
 	# bulk walk over all single fields
 	print $f $indentation . "// get information about all fields\n";
-	my $fieldOids = $indentation . "fields = []string {\n";
+	my $fieldOids = $indentation . "fields := []string {\n";
 	foreach my $k (keys %{$module->{fields}}) {
 		$fieldOids .= $indentation . $indentation . "\"$k\",\n" ;
 	}
 	print $f $fieldOids . $indentation . "}\n";
-	print $f $indentation . "err := snmp.GetBulk (fields, e.ParseSnmpFieldDetails)\n" . 
+	print $f $indentation . "result, err := snmp.Get (fields)\n" . 
 		$indentation . "if err != nil {\n" .
 		$indentation . $indentation . "log.Fatalf(\"Getting fields returned err: %v\", err)\n" .
+		$indentation . "}\n" .
+		$indentation . "for _,pdu := range result.Variables {\n" .
+		$indentation . $indentation . "e.ParseSnmpFieldDetails (pdu)\n" .
 		$indentation . "}\n\n\n\n";
 	
 	
 	# for every table: walk over the table
 	foreach my $k (sort keys %{$module->{tables}}) {
 		print $f $indentation . "// get information table " . $module->{tables}->{$k}->{name} . "\n";
-		print $f $indentation . "err".$module->{tables}->{$k}->{name}." := snmp.BulkWalk (\"" . $k . "\", e.ParseSnmpTablesDetails)\n" . 
+		print $f $indentation . "err".$module->{tables}->{$k}->{name}." := snmp.BulkWalk (\"" . $k . "\", e.ParseSnmpTableDetails)\n" . 
 			$indentation . "if err".$module->{tables}->{$k}->{name}." != nil {\n" .
 			$indentation . $indentation . "log.Fatalf(\"Getting table for ".$module->{tables}->{$k}->{name}." returned err: %v\", err".$module->{tables}->{$k}->{name}.")\n" .
 			$indentation . "}\n\n";
