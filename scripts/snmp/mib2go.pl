@@ -235,8 +235,7 @@ sub addModuleTable {
 		name => ucfirst $field->{label},
 		type => undef,
 		fields => {},
-		description => $field->{description},
-		needsBigInt => false
+		description => $field->{description}
 	};
 	
 	# set common OID for the module
@@ -277,7 +276,7 @@ sub addModuleTableField {
 	
 	# does the table definition need big.Int?
 	if (index ($fieldType, "big.Int") >= 0) {
-		$mibModules->{$field->{moduleID}}->{tables}->{$tableOid}->{needsBigInt} = true;
+		$mibModules->{$field->{moduleID}}->{tablesNeedBigInt} = true;
 	}
 }
 	
@@ -578,9 +577,9 @@ sub writeClassStructure {
 	# for every table: walk over the table
 	foreach my $k (sort keys %{$module->{tables}}) {
 		print $f $indentation . "// get information table " . $module->{tables}->{$k}->{name} . "\n";
-		print $f $indentation . "err := snmp.BulkWalk (\"" . $k . "\", e.ParseSnmpTablesDetails)\n" . 
-			$indentation . "if err != nil {\n" .
-			$indentation . $indentation . "log.Fatalf(\"Getting table for ".$module->{tables}->{$k}->{name}." returned err: %v\", err)\n" .
+		print $f $indentation . "err".$module->{tables}->{$k}->{name}." := snmp.BulkWalk (\"" . $k . "\", e.ParseSnmpTablesDetails)\n" . 
+			$indentation . "if err".$module->{tables}->{$k}->{name}." != nil {\n" .
+			$indentation . $indentation . "log.Fatalf(\"Getting table for ".$module->{tables}->{$k}->{name}." returned err: %v\", err".$module->{tables}->{$k}->{name}.")\n" .
 			$indentation . "}\n\n";
 	}
 	
