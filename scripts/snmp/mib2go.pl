@@ -359,10 +359,10 @@ sub getValueAssignment {
 			return  " = helpers.GetSnmpBoolValue (pdu.Value)";
 		}
 		case "string" {
-			return  " = helpers.GetSnmpStringValue (pdu.Value)";
+			return  " = helpers.GetSnmpStringValue (pdu.Value, pdu.Type)";
 		}
 		else {
-			die ("do not understand type: " . $type . " (cannot decide if sting or int etc)");
+			die (">> do not understand type: " . $type . " (cannot decide if sting or int etc)");
 		}
 	}
 }
@@ -510,7 +510,7 @@ sub writeClassStructure {
 		
 		# stop if value is nil
 		print $f $indentation . "if pdu.Value == nil {\n";
-		print $f $indentation . $indentation . "log.Printf (\"value is nil for %v (%d) -> %v\", pdu.Name, pdu.Type, pdu.Value)\n";
+		print $f $indentation . $indentation . "log.Printf (\">> value is nil for %v (%d) -> %v\", pdu.Name, pdu.Type, pdu.Value)\n";
 		print $f $indentation . $indentation . "return nil\n";
 		print $f $indentation . "}\n\n\n";
 		
@@ -532,7 +532,7 @@ sub writeClassStructure {
 			$n = $n + 1;
 		};
 		print $f $indentation . "} else {\n";
-		print $f $indentation . $indentation . "log.Printf (\"do not understand field %v (%d) -> %v\", pdu.Name, pdu.Type, pdu.Value)\n";
+		print $f $indentation . $indentation . "log.Printf (\">> do not understand field %v (%d) -> %v\", pdu.Name, pdu.Type, pdu.Value)\n";
 		print $f $indentation . "}\n";
 	}
 	print $f $indentation . "return nil\n";
@@ -548,7 +548,7 @@ sub writeClassStructure {
 		
 		# stop if value is nil
 		print $f $indentation . "if pdu.Value == nil {\n";
-		print $f $indentation . $indentation . "log.Printf (\"value is nil for table %v (%d) -> %v\", pdu.Name, pdu.Type, pdu.Value)\n";
+		print $f $indentation . $indentation . "log.Printf (\">> value is nil for table %v (%d) -> %v\", pdu.Name, pdu.Type, pdu.Value)\n";
 		print $f $indentation . $indentation . "return nil\n";
 		print $f $indentation . "}\n\n\n";
 		
@@ -590,7 +590,7 @@ sub writeClassStructure {
 				$n = $n + 1;
 			};
 			print $f $indentation . $indentation . "} else {\n";
-			print $f $indentation . $indentation . $indentation . "log.Printf (\"do not understand table field %v (%d) -> %v\", pdu.Name, pdu.Type, pdu.Value)\n";
+			print $f $indentation . $indentation . $indentation . "log.Printf (\">> do not understand table field %v (%d) -> %v\", pdu.Name, pdu.Type, pdu.Value)\n";
 			print $f $indentation . $indentation . "}\n";
 			print $f $indentation . $indentation . "return nil\n";
 			print $f $indentation . "}\n\n";
@@ -606,7 +606,7 @@ sub writeClassStructure {
 	# generate the RetrieveEnterpriseModuleDetails function
 	print $f "func (e *" . $module->{name} . ") RetrieveEnterpriseModuleDetails (snmp *gosnmp.GoSNMP) {\n\n";
 	
-	print $f $indentation . "log.Printf (\">>> processing module ".$module->{name}."\")\n\n\n";
+	print $f $indentation . "log.Printf (\"+++ processing module ".$module->{name}." +++\")\n\n\n";
 	
 	if ($module->{fields} && scalar keys %{$module->{fields}}) {
 		# bulk walk over all single fields
@@ -619,7 +619,7 @@ sub writeClassStructure {
 		print $f $indentation . "log.Printf (\"querry-ing fields %v\", fields)\n";
 		print $f $indentation . "result, err := snmp.GetNext (fields)\n" . 
 			$indentation . "if err != nil {\n" .
-			$indentation . $indentation . "log.Printf (\"Getting fields returned err: %v\", err)\n" .
+			$indentation . $indentation . "log.Printf (\">> Getting fields returned err: %v\", err)\n" .
 			$indentation . "} else {\n" .
 			$indentation . $indentation . "for _,pdu := range result.Variables {\n" .
 			$indentation . $indentation . $indentation . "e.ParseSnmpFieldDetails (pdu)\n" .
@@ -634,7 +634,7 @@ sub writeClassStructure {
 		print $f $indentation . "log.Printf (\"querry-ing table ".$k."\")\n";
 		print $f $indentation . "err".$module->{tables}->{$k}->{name}." := snmp.Walk (\"" . $k . "\", e.ParseSnmpTableDetails)\n" . 
 			$indentation . "if err".$module->{tables}->{$k}->{name}." != nil {\n" .
-			$indentation . $indentation . "log.Printf (\"Getting table for ".$module->{tables}->{$k}->{name}." returned err: %v\", err".$module->{tables}->{$k}->{name}.")\n" .
+			$indentation . $indentation . "log.Printf (\">> Getting table for ".$module->{tables}->{$k}->{name}." returned err: %v\", err".$module->{tables}->{$k}->{name}.")\n" .
 			$indentation . "}\n\n";
 	}
 	
