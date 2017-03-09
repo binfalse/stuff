@@ -353,13 +353,13 @@ sub getValueAssignment {
 	my $type = shift;
 	switch ($type) {
 		case "*big.Int" {
-			return  " = gosnmp.ToBigInt(pdu.Value)";
+			return  " = helpers.GetSnmpBigIntValue (pdu.Value)";
 		}
 		case "bool" {
-			return  " = pdu.Value.(bool)";
+			return  " = helpers.GetSnmpBoolValue (pdu.Value)";
 		}
 		case "string" {
-			return  " = pdu.Value.(string)";
+			return  " = helpers.GetSnmpStringValue (pdu.Value)";
 		}
 		else {
 			die ("do not understand type: " . $type . " (cannot decide if sting or int etc)");
@@ -444,9 +444,9 @@ sub writeClassStructure {
 	
 	
 	# preamble for module file
-	my @mainPackages = ("github.com/soniah/gosnmp", "log", "fmt", "bytes");
+	my @mainPackages = ("github.com/soniah/gosnmp", "log", "fmt", "bytes", "discovery/helpers");
 	push (@mainPackages, "math/big") if ($module->{needsBigInt});
-	push (@mainPackages, "strings") if ($module->{tables});
+	push (@mainPackages, "strings") if ($module->{tables} || $module->{fields});
 	
 	print $f getFilePreamble ($packagename, \@mainPackages);
 	print $f "// MIB MODULE ", $module->{id}, "\n";
@@ -505,16 +505,36 @@ sub writeClassStructure {
 	
 	# generate the ParseSnmpFieldDetails function
 	print $f "func (e *" . $module->{name} . ") ParseSnmpFieldDetails (pdu gosnmp.SnmpPDU) error {\n\n";
-	print $f $indentation . "oid := pdu.Name\n\n";
-	print $f $indentation . "switch oid {\n";
-	foreach my $k (sort keys %{$module->{fields}}) {
-		print $f $indentation . $indentation . "case \"".$k."\": \n";
+	if ($module->{fields} && scalar keys %{$module->{fields}}) {
+		print $f $indentation . "oid := pdu.Name\n\n";
 		
-		print $f $indentation . $indentation . $indentation . "e." . $module->{fields}->{$k}->{name} . getValueAssignment ($module->{fields}->{$k}->{type}) . "\n";
-	};
-	print $f $indentation . $indentation . "default:\n";
-	print $f $indentation . $indentation . $indentation . "log.Printf(\"do not understand field %v (%d) -> %v\", pdu.Name, pdu.Type, pdu.Value)\n";
-	print $f $indentation . "}\n";
+		# stop if value is nil
+		print $f $indentation . "if pdu.Value == nil {\n";
+		print $f $indentation . $indentation . "log.Printf (\"value is nil for %v (%d) -> %v\", pdu.Name, pdu.Type, pdu.Value)\n";
+		print $f $indentation . $indentation . "return nil\n";
+		print $f $indentation . "}\n\n\n";
+		
+		
+		
+		my $n = 0;
+		foreach my $k (sort keys %{$module->{fields}}) {
+			if ($n == 0)
+			{
+				print $f $indentation . "if ";
+			}
+			else
+			{
+				print $f $indentation . "} else if ";
+			}
+			print $f "strings.HasPrefix (oid, \"".$k.".\") {\n";
+			
+			print $f $indentation . $indentation . "e." . $module->{fields}->{$k}->{name} . getValueAssignment ($module->{fields}->{$k}->{type}) . "\n";
+			$n = $n + 1;
+		};
+		print $f $indentation . "} else {\n";
+		print $f $indentation . $indentation . "log.Printf (\"do not understand field %v (%d) -> %v\", pdu.Name, pdu.Type, pdu.Value)\n";
+		print $f $indentation . "}\n";
+	}
 	print $f $indentation . "return nil\n";
 	print $f "}\n\n\n";
 	
@@ -525,21 +545,36 @@ sub writeClassStructure {
 	if ($module->{tables} && scalar keys %{$module->{tables}})
 	{
 		print $f $indentation . "oid := pdu.Name\n\n";
+		
+		# stop if value is nil
+		print $f $indentation . "if pdu.Value == nil {\n";
+		print $f $indentation . $indentation . "log.Printf (\"value is nil for table %v (%d) -> %v\", pdu.Name, pdu.Type, pdu.Value)\n";
+		print $f $indentation . $indentation . "return nil\n";
+		print $f $indentation . "}\n\n\n";
+		
+		
 		foreach my $k (sort keys %{$module->{tables}}) {
 			my $table = $module->{tables}->{$k};
 			print $f $indentation . "// table for " . $table->{name} . "\n";
-			print $f $indentation . "if strings.Contains(oid, \"" . $table->{id} . "\") {\n";
+			print $f $indentation . "if strings.HasPrefix (oid, \"" . $table->{id} . ".\") {\n";
+			
+			# create map if not yet created
+			print $f $indentation . $indentation . "if e." . $module->{tables}->{$k}->{name}." == nil {\n";
+			print $f $indentation . $indentation . $indentation . "e." . $module->{tables}->{$k}->{name}." = make (map[string]*".$table->{type}.")\n";
+			print $f $indentation . $indentation . "}\n";
+			
 	# 		print $f $indentation . $indentation . "switch oid {\n";
 			my $n = 0;
 			foreach my $field (sort keys %{$table->{fields}}) {
 				if ($n == 0)
 				{
-					print $f $indentation . $indentation . "if strings.Contains(oid, \"".$field."\") {\n";
+					print $f $indentation . $indentation . "if ";
 				}
 				else
 				{
-					print $f $indentation . $indentation . "} else if strings.Contains(oid, \"".$field."\") {\n";
+					print $f $indentation . $indentation . "} else if ";
 				}
+				print $f "strings.HasPrefix (oid, \"".$field.".\") {\n";
 				
 				# needs to be a bit complex as we cannot assign to struct fields in a map
 				# https://groups.google.com/forum/#!topic/golang-nuts/4_pabWnsMp0
@@ -555,7 +590,7 @@ sub writeClassStructure {
 				$n = $n + 1;
 			};
 			print $f $indentation . $indentation . "} else {\n";
-			print $f $indentation . $indentation . $indentation . "log.Printf(\"do not understand field %v (%d) -> %v\", pdu.Name, pdu.Type, pdu.Value)\n";
+			print $f $indentation . $indentation . $indentation . "log.Printf (\"do not understand table field %v (%d) -> %v\", pdu.Name, pdu.Type, pdu.Value)\n";
 			print $f $indentation . $indentation . "}\n";
 			print $f $indentation . $indentation . "return nil\n";
 			print $f $indentation . "}\n\n";
@@ -571,28 +606,35 @@ sub writeClassStructure {
 	# generate the RetrieveEnterpriseModuleDetails function
 	print $f "func (e *" . $module->{name} . ") RetrieveEnterpriseModuleDetails (snmp *gosnmp.GoSNMP) {\n\n";
 	
-	# bulk walk over all single fields
-	print $f $indentation . "// get information about all fields\n";
-	my $fieldOids = $indentation . "fields := []string {\n";
-	foreach my $k (keys %{$module->{fields}}) {
-		$fieldOids .= $indentation . $indentation . "\"$k\",\n" ;
+	print $f $indentation . "log.Printf (\">>> processing module ".$module->{name}."\")\n\n\n";
+	
+	if ($module->{fields} && scalar keys %{$module->{fields}}) {
+		# bulk walk over all single fields
+		print $f $indentation . "// get information about all fields\n";
+		my $fieldOids = $indentation . "fields := []string {\n";
+		foreach my $k (keys %{$module->{fields}}) {
+			$fieldOids .= $indentation . $indentation . "\"$k\",\n" ;
+		}
+		print $f $fieldOids . $indentation . "}\n";
+		print $f $indentation . "log.Printf (\"querry-ing fields %v\", fields)\n";
+		print $f $indentation . "result, err := snmp.GetNext (fields)\n" . 
+			$indentation . "if err != nil {\n" .
+			$indentation . $indentation . "log.Printf (\"Getting fields returned err: %v\", err)\n" .
+			$indentation . "} else {\n" .
+			$indentation . $indentation . "for _,pdu := range result.Variables {\n" .
+			$indentation . $indentation . $indentation . "e.ParseSnmpFieldDetails (pdu)\n" .
+			$indentation . $indentation . "}\n" . 
+			$indentation . "}\n\n\n";
 	}
-	print $f $fieldOids . $indentation . "}\n";
-	print $f $indentation . "result, err := snmp.Get (fields)\n" . 
-		$indentation . "if err != nil {\n" .
-		$indentation . $indentation . "log.Fatalf(\"Getting fields returned err: %v\", err)\n" .
-		$indentation . "}\n" .
-		$indentation . "for _,pdu := range result.Variables {\n" .
-		$indentation . $indentation . "e.ParseSnmpFieldDetails (pdu)\n" .
-		$indentation . "}\n\n\n\n";
 	
 	
 	# for every table: walk over the table
 	foreach my $k (sort keys %{$module->{tables}}) {
 		print $f $indentation . "// get information table " . $module->{tables}->{$k}->{name} . "\n";
-		print $f $indentation . "err".$module->{tables}->{$k}->{name}." := snmp.BulkWalk (\"" . $k . "\", e.ParseSnmpTableDetails)\n" . 
+		print $f $indentation . "log.Printf (\"querry-ing table ".$k."\")\n";
+		print $f $indentation . "err".$module->{tables}->{$k}->{name}." := snmp.Walk (\"" . $k . "\", e.ParseSnmpTableDetails)\n" . 
 			$indentation . "if err".$module->{tables}->{$k}->{name}." != nil {\n" .
-			$indentation . $indentation . "log.Fatalf(\"Getting table for ".$module->{tables}->{$k}->{name}." returned err: %v\", err".$module->{tables}->{$k}->{name}.")\n" .
+			$indentation . $indentation . "log.Printf (\"Getting table for ".$module->{tables}->{$k}->{name}." returned err: %v\", err".$module->{tables}->{$k}->{name}.")\n" .
 			$indentation . "}\n\n";
 	}
 	
@@ -605,30 +647,30 @@ sub writeClassStructure {
 	# generate the String function
 	print $f "func (e *" . $module->{name} . ") String () string {\n\n";
 	print $f $indentation . "var buffer bytes.Buffer\n\n\n";
-	print $f $indentation . "buffer.WriteString (fmt.Sprintf(\"- MODULE ".$module->{name}."\\n\"))\n\n\n";
+	print $f $indentation . "buffer.WriteString (fmt.Sprintf (\"- MODULE ".$module->{name}."\\n\"))\n\n\n";
 	print $f $indentation . "// FIELDS\n";
 	foreach my $k (keys %{$module->{fields}}) {
-		print $f $indentation . "buffer.WriteString (fmt.Sprintf(\" -> FIELD[".$k."] = %v (".$module->{fields}->{$k}->{name}.")\\n\", e.".$module->{fields}->{$k}->{name}."))\n";
+		print $f $indentation . "buffer.WriteString (fmt.Sprintf (\" -> FIELD[".$k."] = %v (".$module->{fields}->{$k}->{name}.")\\n\", e.".$module->{fields}->{$k}->{name}."))\n";
 	}
 	print $f "\n\n";
 	
 	print $f $indentation . "// TABLES\n";
 	foreach my $k (sort keys %{$module->{tables}}) {
-		print $f $indentation . "buffer.WriteString (fmt.Sprintf(\" -> TABLE[".$k."]: (".$module->{tables}->{$k}->{name}." of types ".$module->{tables}->{$k}->{type}.")\\n\"))\n";
-		print $f $indentation . "buffer.WriteString (fmt.Sprintf(\"    ROWID\t";
+		print $f $indentation . "buffer.WriteString (fmt.Sprintf (\" -> TABLE[".$k."]: (".$module->{tables}->{$k}->{name}." of types ".$module->{tables}->{$k}->{type}.")\\n\"))\n";
+		print $f $indentation . "buffer.WriteString (fmt.Sprintf (\"    ROWID\t";
 		foreach my $field (sort keys %{$module->{tables}->{$k}->{fields}}) {
 			print $f $module->{tables}->{$k}->{fields}->{$field}->{name} . "\t";
 		}
-		print $f "\"))\n";
+		print $f "\\n\"))\n";
 		
 		
 		print $f $indentation . "for k,v := range e." . $module->{tables}->{$k}->{name} ." {\n";
 		
-		print $f $indentation . $indentation . "buffer.WriteString (fmt.Sprintf(\"    %v\t\", k))\n";
+		print $f $indentation . $indentation . "buffer.WriteString (fmt.Sprintf (\"    %v\t\", k))\n";
 		foreach my $field (sort keys %{$module->{tables}->{$k}->{fields}}) {
-			print $f $indentation . $indentation . "buffer.WriteString (fmt.Sprintf(\"%v\t\", v.".$module->{tables}->{$k}->{fields}->{$field}->{name}."))\n";
+			print $f $indentation . $indentation . "buffer.WriteString (fmt.Sprintf (\"%v\t\", v.".$module->{tables}->{$k}->{fields}->{$field}->{name}."))\n";
 		}
-		print $f $indentation . $indentation . "buffer.WriteString (fmt.Sprintf(\"\\n\"))\n";
+		print $f $indentation . $indentation . "buffer.WriteString (fmt.Sprintf (\"\\n\"))\n";
 		print $f $indentation . "}\n";
 		
 		print $f "\n\n";
