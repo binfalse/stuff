@@ -29,40 +29,118 @@ if (!$filebase || !-e $filebase or !-d $filebase) {
 
 # SNMP::loadModules('EXTREME-SYSTEM-MIB');
 
-SNMP::loadModules('EXTREME-BASE-MIB');
-SNMP::loadModules('EXTREME-CABLE-MIB');
-SNMP::loadModules('EXTREME-DLCS-MIB');
-SNMP::loadModules('EXTREME-DOS-MIB');
-SNMP::loadModules('EXTREMEdot11AP-MIB');
-SNMP::loadModules('EXTREMEdot11f-MIB');
-SNMP::loadModules('EXTREME-EAPS-MIB');
-SNMP::loadModules('EXTREME-EDP-MIB');
-SNMP::loadModules('EXTREME-ENH-DOS-MIB');
-SNMP::loadModules('EXTREME-ENTITY-MIB');
-SNMP::loadModules('EXTREME-ESRP-MIB');
-SNMP::loadModules('EXTREME-FDB-MIB');
-SNMP::loadModules('EXTREME-FILETRANSFER-MIB');
-SNMP::loadModules('EXTREME-NETFLOW-MIB');
-SNMP::loadModules('EXTREME-NP-MIB');
-SNMP::loadModules('EXTREME-OSPF-MIB');
-SNMP::loadModules('EXTREME-PBQOS-MIB');
-SNMP::loadModules('EXTREME-POE-MIB');
-SNMP::loadModules('EXTREME-PORT-MIB');
-SNMP::loadModules('EXTREME-POS-MIB');
-SNMP::loadModules('EXTREME-QOS-MIB');
-SNMP::loadModules('EXTREME-RTSTATS-MIB');
-SNMP::loadModules('EXTREME-SERVICES-MIB');
-SNMP::loadModules('EXTREME-SLB-MIB');
-SNMP::loadModules('EXTREME-SNMPV3-MIB');
-SNMP::loadModules('EXTREME-STACKING-MIB');
-SNMP::loadModules('EXTREME-STP-EXTENSIONS-MIB');
-SNMP::loadModules('EXTREME-SYSTEM-MIB');
-SNMP::loadModules('EXTREME-TRAP-MIB');
-SNMP::loadModules('EXTREME-TRAPPOLL-MIB');
-SNMP::loadModules('EXTREME-V2TRAP-MIB');
-SNMP::loadModules('EXTREME-VC-MIB');
-SNMP::loadModules('EXTREME-VLAN-MIB');
-SNMP::loadModules('EXTREME-WIRELESS-MIB');
+# SNMP::loadModules('EXTREME-BASE-MIB');
+# SNMP::loadModules('EXTREME-CABLE-MIB');
+# SNMP::loadModules('EXTREME-DLCS-MIB');
+# SNMP::loadModules('EXTREME-DOS-MIB');
+# SNMP::loadModules('EXTREMEdot11AP-MIB');
+# SNMP::loadModules('EXTREMEdot11f-MIB');
+# SNMP::loadModules('EXTREME-EAPS-MIB');
+# SNMP::loadModules('EXTREME-EDP-MIB');
+# SNMP::loadModules('EXTREME-ENH-DOS-MIB');
+# SNMP::loadModules('EXTREME-ENTITY-MIB');
+# SNMP::loadModules('EXTREME-ESRP-MIB');
+# SNMP::loadModules('EXTREME-FDB-MIB');
+# SNMP::loadModules('EXTREME-FILETRANSFER-MIB');
+# SNMP::loadModules('EXTREME-NETFLOW-MIB');
+# SNMP::loadModules('EXTREME-NP-MIB');
+# SNMP::loadModules('EXTREME-OSPF-MIB');
+# SNMP::loadModules('EXTREME-PBQOS-MIB');
+# SNMP::loadModules('EXTREME-POE-MIB');
+# SNMP::loadModules('EXTREME-PORT-MIB');
+# SNMP::loadModules('EXTREME-POS-MIB');
+# SNMP::loadModules('EXTREME-QOS-MIB');
+# SNMP::loadModules('EXTREME-RTSTATS-MIB');
+# SNMP::loadModules('EXTREME-SERVICES-MIB');
+# SNMP::loadModules('EXTREME-SLB-MIB');
+# SNMP::loadModules('EXTREME-SNMPV3-MIB');
+# SNMP::loadModules('EXTREME-STACKING-MIB');
+# SNMP::loadModules('EXTREME-STP-EXTENSIONS-MIB');
+# SNMP::loadModules('EXTREME-SYSTEM-MIB');
+# SNMP::loadModules('EXTREME-TRAP-MIB');
+# SNMP::loadModules('EXTREME-TRAPPOLL-MIB');
+# SNMP::loadModules('EXTREME-V2TRAP-MIB');
+# SNMP::loadModules('EXTREME-VC-MIB');
+# SNMP::loadModules('EXTREME-VLAN-MIB');
+# SNMP::loadModules('EXTREME-WIRELESS-MIB');
+
+SNMP::loadModules ('EXTREME-BASE-MIB');
+SNMP::loadModules ('ENTERASYS-MIB-NAMES');
+SNMP::loadModules ('CTRON-OIDS');
+SNMP::loadModules ('CTRON-MIB-NAMES');
+SNMP::loadModules ('EXTREME-SYSTEM-MIB');
+SNMP::loadModules ('EXTREME-ENTITY-MIB');
+SNMP::loadModules ('EXTREME-SOFTWARE-MONITOR-MIB');
+SNMP::loadModules ('EXTREME-POE-MIB');
+SNMP::loadModules ('EXTREME-V2TRAP-MIB');
+SNMP::loadModules ('EXTREME-VLAN-MIB');
+SNMP::loadModules ('EXTREME-PORT-MIB');
+SNMP::loadModules ('EXTREME-FDB-MIB');
+SNMP::loadModules ('ENTERASYS-MAC-LOCKING-MIB');
+SNMP::loadModules ('EXTREME-VM-MIB');
+SNMP::loadModules ('EXTREME-ESRP-MIB');
+SNMP::loadModules ('EXTREME-EDP-MIB');
+SNMP::loadModules ('EXTREME-STP-EXTENSIONS-MIB');
+SNMP::loadModules ('EXTREME-CLEARFLOW-MIB');
+SNMP::loadModules ('EXTREME-ACL-MIB');
+SNMP::loadModules ('EXTREME-IP-SECURITY-MIB');
+SNMP::loadModules ('EXTREME-EAPS-MIB');
+SNMP::loadModules ('EXTREME-ERPS-MIB');
+SNMP::loadModules ('EXTREME-CFM-MIB');
+SNMP::loadModules ('EXTREME-LACP-MIB');
+SNMP::loadModules ('ENTERASYS-UPN-TC-MIB');
+SNMP::loadModules ('ENTERASYS-POLICY-PROFILE-MIB');
+SNMP::loadModules ('ENTERASYS-MULTI-AUTH-MIB');
+SNMP::loadModules ('ENTERASYS-CONVERGENCE-END-POINT-MIB');
+SNMP::loadModules ('EXTREME-MLAG-MIB');
+SNMP::loadModules ('EXTREME-HCLAG-MIB');
+SNMP::loadModules ('ENTERASYS-CLASS-OF-SERVICE-MIB');
+SNMP::loadModules ('ENTERASYS-MAC-AUTHENTICATION-MIB');
+SNMP::loadModules ('CTRON-ALIAS-MIB');
+SNMP::loadModules ('EXTREME-OSPF-MIB');
+SNMP::loadModules ('EXTREME-MPLS-MIB');
+SNMP::loadModules ('EXTREME-MPLS-TE-MIB');
+SNMP::loadModules ('EXTREME-RTSTATS-MIB');
+SNMP::loadModules ('EXTREME-IDMGR-MIB');
+SNMP::loadModules ('EXTREME-UPM-MIB');
+SNMP::loadModules ('EXTREME-AUTOPROVISION-MIB');
+SNMP::loadModules ('EXTREME-SNMPV3-MIB');
+SNMP::loadModules ('EXTREME-TRAPPOLL-MIB');
+SNMP::loadModules ('EXTREME-MAC-AUTH-MIB');
+SNMP::loadModules ('EXTREME-CFGMGMT-MIB');
+SNMP::loadModules ('ENTERASYS-RADIUS-AUTH-CLIENT-MIB');
+SNMP::loadModules ('ENTERASYS-RADIUS-ACCT-CLIENT-EXT-MIB');
+SNMP::loadModules ('ENTERASYS-RADIUS-DYNAMIC-AUTHOR-SERVER-EXT-MIB');
+SNMP::loadModules ('EXTREME-IETF-BFD-TC-MIB');
+SNMP::loadModules ('EXTREME-IETF-BFD-MIB');
+SNMP::loadModules ('EXTREME-VRRP-MIB');
+SNMP::loadModules ('EXTREME-OSPFV3-MIB');
+SNMP::loadModules ('EXTREME-NP-MIB');
+SNMP::loadModules ('EXTREME-PBQOS-MIB');
+SNMP::loadModules ('EXTREME-POS-MIB');
+SNMP::loadModules ('EXTREME-QOS-MIB');
+SNMP::loadModules ('A3COM51-SS9000SX');
+SNMP::loadModules ('EXTREME-CABLE-MIB');
+SNMP::loadModules ('EXTREME-DLCS-MIB');
+SNMP::loadModules ('EXTREME-DOS-MIB');
+SNMP::loadModules ('EXTREMEdot11f-MIB');
+SNMP::loadModules ('EXTREME-ENH-DOS-MIB');
+SNMP::loadModules ('EXTREME-FILETRANSFER-MIB');
+SNMP::loadModules ('EXTREME-NETFLOW-MIB');
+SNMP::loadModules ('EXTREME-SERVICES-MIB');
+SNMP::loadModules ('EXTREME-SLB-MIB');
+SNMP::loadModules ('EXTREME-STACKING-MIB');
+SNMP::loadModules ('EXTREME-TRAP-MIB');
+SNMP::loadModules ('EXTREME-VC-MIB');
+SNMP::loadModules ('EXTREME-WIRELESS-MIB');
+SNMP::loadModules ('GENERIC-3COM-VLAN-MIB-1-0-1');
+SNMP::loadModules ('LOAD-BAL-SYSTEM-MIB');
+SNMP::loadModules ('WAN-TRAP-MIB');
+SNMP::loadModules ('XEDIA-REG');
+SNMP::loadModules ('XEDIA-TRAFFIC-MGMT-MIB');
+
+
+
 
 
 
@@ -136,16 +214,20 @@ sub getType {
 	return undef if (!$syntax);
 	
 	switch ($syntax) {
-		case /INTEGER|UNSIGNED32|ExtremeVlanType|ExtremeVlanEncapsType|RowStatus|COUNTER(64)?|ClientAuthType|TICKS|BITS|Timeout|ExtremeWirelessCountryCode|ExtremeWirelessAntennaType|TestAndIncr|ExtremeWirelessPhysInterfaceIndex|Dot11Speed|Dot11AChannel|ExtremeWirelessChannelAutoSelectStatus|NetworkAuthMode|Dot11AuthMode|ExtremeWirelessVirtInterfaceIndex|WPACipherSet|InterfaceIndex|Dot11Type|WirelessRemoteConnectBindingType|AuthServerType|TimeStamp|GAUGE|AuthServerAccessType|WPAKeyMgmtSet|ExtremeWirelessAntennaLocation/ {
+		case /INTEGER|UNSIGNED32|ExtremeVlanType|ExtremeVlanEncapsType|RowStatus|COUNTER(64)?|ClientAuthType|TICKS|BITS|Timeout|ExtremeWirelessCountryCode|ExtremeWirelessAntennaType|TestAndIncr|ExtremeWirelessPhysInterfaceIndex|Dot11Speed|Dot11AChannel|ExtremeWirelessChannelAutoSelectStatus|NetworkAuthMode|Dot11AuthMode|ExtremeWirelessVirtInterfaceIndex|WPACipherSet|InterfaceIndex|Dot11Type|WirelessRemoteConnectBindingType|AuthServerType|TimeStamp|GAUGE|AuthServerAccessType|WPAKeyMgmtSet|ExtremeWirelessAntennaLocation|UnitMultiplier|SlotType|ExtremePortTrafficDirection|EapsRingPort|EapsFailTimerExpiryAction|EapsSharedPortSegmentTimerExpiryAction|EapsPortType|EapsSharedPortMode|EapsDomainPortStatus|EapsDomainPriority|EapsMbrVlanType|EapsSharedPortSegmentStatus|EapsSharedPortVlanPortStatus|EapsSharedPortState|EapsSharedPortNeighborStatus|LacpMemberPort|EapsSharedPortRootBlockerStatus|IpProtocol|InetPortNumber|IcmpAnomalyReason|TcpFlagAnomalyReason|VlanTag|TcpFragmentAnomalyReason|ExtremeIdMgrInetAddrDetectMethod|ExtremeIdMgrInetAddrSecViolation|PwIndexType|PwOperStatusTC|MplsTunnelIndex|MplsTunnelInstanceIndex|MplsExtendedTunnelId|IndexInteger|HclagMemberPort|CounterDirection|VMVPPSynchType|ExtremeBfdSessIndexTC|ExtremeBfdSessTypeTC|ExtremeBfdCtrlDestPortNumberTC|ExtremeBfdCtrlSourcePortNumberTC|ExtremeBfdSessStateTC|ExtremeBfdDiagTC|ExtremeBfdSessOperModeTC|ExtremeBfdIntervalTC|ExtremeBfdIntervalTC|ExtremeBfdIntervalTC|ExtremeBfdMultiplierTC|ExtremeBfdIntervalTC|ExtremeBfdIntervalTC|ExtremeBfdMultiplierTC|ExtremeBfdSessAuthenticationTypeTC|StorageType|ExtremeBfdDiagTC|VlanId|RingMonitorMechanismType|ExtremeCfmGroupOperStatus|ExtremeOspfv3RouterIdTc|Status|ExtremeOspfv3UpToRefreshIntervalTc|ExtremeOspfv3AreaIdTc|BigMetric|ExtremeOspfv3RouterIdTc|ExtremeOspfv3AreaIdTc|ExtremeOspfv3IfInstIdTc|Metric|DesignatedRouterPriority|HelloRange|ExtremeOspfv3DeadIntRangeTc|Dot1agCfmMepId|EapsDomainMode|EapsDomainState|PowerValue/ {
+			
+			
+			
 			return "*big.Int";
 		}
 		case "TruthValue" {
 			return "bool";
 		}
-		case /DisplayString|IPADDR|PortList|MacAddress|OBJECTID|OCTETSTR|L4Port|ExtremeDeviceId|ExtremeGenAddr|BridgeId|InetAddress|OwnerString/ {
+		case /DisplayString|IPADDR|PortList|MacAddress|OBJECTID|OCTETSTR|L4Port|ExtremeDeviceId|ExtremeGenAddr|BridgeId|InetAddress|OwnerString|LacpGroupId|HexOctet|AutonomousType|MplsLdpIdentifier|DateAndTime|SnmpAdminString|MplsIndexType|MplsLsrIdentifier|HclagGroupId|VPNIdOrZero|ExtremeBfdSessionAuthenticationKeyTC/ {
 			return "string";
 		}
 		else {
+# 			print (">>>>> type error: $syntax\n");
 			die ("do not understand syntax: " . $syntax . " (cannot decide if sting or int etc)");
 		}
 	}
@@ -197,6 +279,26 @@ sub addModuleField {
 	
 # 	print $field->{objectID}. "--" . $field->{label} . "--".$field->{syntax}."\n";
 	my $fieldType = getType($field->{syntax});
+	
+	
+	####################################################
+# 	if (!$fieldType)
+# 	{
+# 		print "------\n";
+# 		print Dumper($field->{label});
+# 		print Dumper($field->{objectID});
+# 		print Dumper($field->{syntax});
+# 		print Dumper($field->{moduleID});
+# 		print Dumper($field->{type});
+# 		print Dumper($field->{access});
+# 		print Dumper($field->{status});
+# 		print Dumper($field->{description});
+# 		print "------\n";
+# 	}
+	####################################################
+	
+	## parser problems, so we need to work-around...
+# 	return if (!$fieldType and $field->{access} eq "Notify");
 	
 	# add it to the mibModules
 	$mibModules->{$field->{moduleID}}->{fields}->{$field->{objectID}} = {
@@ -346,7 +448,7 @@ foreach my $k (sort (map {version->declare($_)} keys %extremeOids))
 
 
 
-
+use Devel::StackTrace;
 
 
 sub getValueAssignment {
@@ -362,6 +464,8 @@ sub getValueAssignment {
 			return  " = helpers.GetSnmpStringValue (pdu.Value, pdu.Type)";
 		}
 		else {
+			my $trace = Devel::StackTrace->new;
+			print $trace->as_string;
 			die (">> do not understand type: " . $type . " (cannot decide if sting or int etc)");
 		}
 	}
@@ -427,7 +531,7 @@ sub writeField {
 			print $f $indentation . $r;
 		}
 	}
-	print Dumper($field) if (!$field->{type});
+# 	print Dumper($field) if (!$field->{type});
 	print $f $indentation . $field->{name} . " " . $field->{type} . "\n\n\n";
 }
 
@@ -528,6 +632,15 @@ sub writeClassStructure {
 			}
 			print $f "strings.HasPrefix (oid, \"".$k.".\") {\n";
 			
+			
+			
+			####################################################
+# 			if (!$module->{fields}->{$k}->{type})
+# 			{
+# 				print Dumper($module->{fields}->{$k});
+# 			}
+			####################################################
+			
 			print $f $indentation . $indentation . "e." . $module->{fields}->{$k}->{name} . getValueAssignment ($module->{fields}->{$k}->{type}) . "\n";
 			$n = $n + 1;
 		};
@@ -586,6 +699,12 @@ sub writeClassStructure {
 				print $f $indentation . $indentation . $indentation . "}\n";
 				
 				# value
+				####################################################
+# 				if (!$table->{fields}->{$field}->{type})
+# 				{
+# 					print Dumper($table->{fields}->{$field});
+# 				}
+				####################################################
 				print $f $indentation . $indentation . $indentation . "row." . $table->{fields}->{$field}->{name} . getValueAssignment ($table->{fields}->{$field}->{type}) . "\n";
 				$n = $n + 1;
 			};
@@ -711,10 +830,14 @@ print $enterpriseFile "func (e *" . $packageTypeName . ") RetrieveEnterpriseDeta
 print $enterpriseFile $packageFile{snmpParseFunc} . "\n";
 print $enterpriseFile "\n}\n\n\n";
 
-print $enterpriseFile "func (e *" . $packageTypeName . ") String() string {\n";
+print $enterpriseFile "func (e *" . $packageTypeName . ") String () string {\n";
 print $enterpriseFile $indentation . "var buffer bytes.Buffer\n\n\n";
 print $enterpriseFile $packageFile{stringFunc} . "\n";
 print $enterpriseFile $indentation . "return buffer.String()";
+print $enterpriseFile "\n}\n\n\n";
+
+print $enterpriseFile "func (e *" . $packageTypeName . ") IsValid () bool {\n";
+print $enterpriseFile $indentation . "return true";
 print $enterpriseFile "\n}\n\n\n";
 
 
