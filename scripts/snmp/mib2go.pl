@@ -566,7 +566,7 @@ sub writeClassStructure {
 	
 	# add to the retriever function
 	$packageFile{snmpParseFunc} .= $indentation . "// retrieving details about the module ". $module->{id}. "\n";
-	$packageFile{snmpParseFunc} .= $indentation . "e." . $module->{name}. "Module.RetrieveEnterpriseModuleDetails (snmp)\n\n\n";
+	$packageFile{snmpParseFunc} .= $indentation . "e." . $module->{name}. "Module.RetrieveEnterpriseModuleDetails (snmp, pduTrigger)\n\n\n";
 	
 	# add to the string function
 	$packageFile{stringFunc} .= $indentation . "// print details about the module ". $module->{id}. "\n";
@@ -604,6 +604,9 @@ sub writeClassStructure {
 		writeTableStructure ($ft, $module->{tables}->{$k});
 	}
 	
+	print $f $indentation . "// a temporary PDU Trigger to react on certain OIDs\n"
+	print $f $indentation . "pduTrigger []*helpers.PduTrigger\n"
+	
 	print $f "}\n\n\n";
 	
 	
@@ -611,6 +614,12 @@ sub writeClassStructure {
 	print $f "func (e *" . $module->{name} . ") ParseSnmpFieldDetails (pdu gosnmp.SnmpPDU) error {\n\n";
 	if ($module->{fields} && scalar keys %{$module->{fields}}) {
 		print $f $indentation . "oid := pdu.Name\n\n";
+		
+		print $f $indentation . "for i := range e.pduTrigger {\n";
+		print $f $indentation . $indentation . "if e.pduTrigger[i].Check (oid){\n";
+		print $f $indentation . $indentation . $indentation . "e.pduTrigger[i].Process (pdu)\n";
+		print $f $indentation . $indentation . "}\n";
+		print $f $indentation . "}\n";
 		
 		# stop if value is nil
 		print $f $indentation . "if pdu.Value == nil {\n";
@@ -658,6 +667,12 @@ sub writeClassStructure {
 	if ($module->{tables} && scalar keys %{$module->{tables}})
 	{
 		print $f $indentation . "oid := pdu.Name\n\n";
+		
+		print $f $indentation . "for i := range e.pduTrigger {\n";
+		print $f $indentation . $indentation . "if e.pduTrigger[i].Check (oid){\n";
+		print $f $indentation . $indentation . $indentation . "e.pduTrigger[i].Process (pdu)\n";
+		print $f $indentation . $indentation . "}\n";
+		print $f $indentation . "}\n";
 		
 		# stop if value is nil
 		print $f $indentation . "if pdu.Value == nil {\n";
@@ -723,7 +738,10 @@ sub writeClassStructure {
 	
 	
 	# generate the RetrieveEnterpriseModuleDetails function
-	print $f "func (e *" . $module->{name} . ") RetrieveEnterpriseModuleDetails (snmp *gosnmp.GoSNMP) {\n\n";
+	print $f "func (e *" . $module->{name} . ") RetrieveEnterpriseModuleDetails (snmp *gosnmp.GoSNMP, pduTrigger []*helpers.PduTrigger) {\n\n";
+	
+	# set temporary PDU trigger
+	print $f $indentation . "e.pduTrigger = pduTrigger\n\n";
 	
 	print $f $indentation . "log.Printf (\"+++ processing module ".$module->{name}." +++\")\n\n\n";
 	
@@ -757,6 +775,8 @@ sub writeClassStructure {
 			$indentation . "}\n\n";
 	}
 	
+	# unset current PDU trigger
+	print $f $indentation . "e.pduTrigger = nil\n";
 	
 	
 	print $f "\n}\n\n\n";
@@ -817,16 +837,16 @@ foreach my $k (keys %$mibModules){
 
 my $packageTypeName = ucfirst $packagename;
 
-my $filename = $filebase."/enterprise.go";
+my $filename = $filebase."/".$packagename."Enterprise.go";
 open (my $enterpriseFile, '>', $filename) || die ("cannot open file " . $filename);
-print $enterpriseFile getFilePreamble ($packagename, ["github.com/soniah/gosnmp", "bytes"]);
+print $enterpriseFile getFilePreamble ($packagename, ["github.com/soniah/gosnmp", "bytes", "discovery/helpers"]);
 
 
 print $enterpriseFile "type " . $packageTypeName . " struct {\n\n";
 print $enterpriseFile $packageFile{classStructure} . "\n";
 print $enterpriseFile "\n}\n\n\n";
 
-print $enterpriseFile "func (e *" . $packageTypeName . ") RetrieveEnterpriseDetails (snmp *gosnmp.GoSNMP) {\n";
+print $enterpriseFile "func (e *" . $packageTypeName . ") RetrieveEnterpriseDetails (snmp *gosnmp.GoSNMP, pduTrigger []*helpers.PduTrigger) {\n";
 print $enterpriseFile $packageFile{snmpParseFunc} . "\n";
 print $enterpriseFile "\n}\n\n\n";
 
