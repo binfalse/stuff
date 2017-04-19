@@ -605,7 +605,7 @@ sub writeClassStructure {
 	}
 	
 	print $f $indentation . "// a temporary PDU Trigger to react on certain OIDs\n"
-	print $f $indentation . "pduTrigger []*helpers.PduTrigger\n"
+	print $f $indentation . "pduTrigger []helpers.PduTrigger\n"
 	
 	print $f "}\n\n\n";
 	
@@ -738,7 +738,7 @@ sub writeClassStructure {
 	
 	
 	# generate the RetrieveEnterpriseModuleDetails function
-	print $f "func (e *" . $module->{name} . ") RetrieveEnterpriseModuleDetails (snmp *gosnmp.GoSNMP, pduTrigger []*helpers.PduTrigger) {\n\n";
+	print $f "func (e *" . $module->{name} . ") RetrieveEnterpriseModuleDetails (snmp *gosnmp.GoSNMP, pduTrigger []helpers.PduTrigger) {\n\n";
 	
 	# set temporary PDU trigger
 	print $f $indentation . "e.pduTrigger = pduTrigger\n\n";
@@ -846,7 +846,7 @@ print $enterpriseFile "type " . $packageTypeName . " struct {\n\n";
 print $enterpriseFile $packageFile{classStructure} . "\n";
 print $enterpriseFile "\n}\n\n\n";
 
-print $enterpriseFile "func (e *" . $packageTypeName . ") RetrieveEnterpriseDetails (snmp *gosnmp.GoSNMP, pduTrigger []*helpers.PduTrigger) {\n";
+print $enterpriseFile "func (e *" . $packageTypeName . ") RetrieveEnterpriseDetails (snmp *gosnmp.GoSNMP, pduTrigger []helpers.PduTrigger) {\n";
 print $enterpriseFile $packageFile{snmpParseFunc} . "\n";
 print $enterpriseFile "\n}\n\n\n";
 
